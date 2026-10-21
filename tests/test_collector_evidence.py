@@ -384,7 +384,7 @@ class Source(unittest.TestCase):
     def test_web_host_written_once(self):
         host = WEB_HOST
         hits = [p for p in (ROOT / "src").rglob("*.py") if host in p.read_text()]
-        self.assertEqual([p.name for p in hits], ["github_fields.py"])
+        self.assertEqual(sorted(p.name for p in hits), ["github_api.py", "github_fields.py"])
         for p in (ROOT / "tests").glob("*.py"):
             self.assertNotIn(host, p.read_text(), p.name)
 

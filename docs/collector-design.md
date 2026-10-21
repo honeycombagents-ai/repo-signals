@@ -157,6 +157,9 @@ states only what the repository shows. `Evidence` itself is unchanged.
 
 ## 4. GitHub access
 
+**Status:** the client exists (`collector/github_api.py`, see [github-client.md](github-client.md))
+but is unreachable from the command line, and it is a dry run by default.
+
 ### Endpoints
 
 > **Unverified.** Everything in this table is general knowledge, not checked against GitHub's
