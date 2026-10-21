@@ -28,7 +28,7 @@ class ExitCodes(unittest.TestCase):
     def test_doctor_warnings_only_exits_0(self):
         code, out, _ = cli("doctor")
         self.assertEqual(code, 0, out)
-        self.assertIn("2 warn, 0 fail", out)
+        self.assertIn(" warn, 0 fail", out)  # the warn count depends on openssl being on PATH
 
     def test_doctor_failure_exits_1(self):
         for env in ({"REPO_SIGNALS_MAX_CALLS": "0"}, {"REPO_SIGNALS_PROVIDER": "nosuch"}):

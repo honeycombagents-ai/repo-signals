@@ -31,6 +31,9 @@ use is not reachable from the command line yet (see [docs/hunter.md](docs/hunter
 [docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
 implemented.
 
+A Google Sheet writer appends people for review. It runs as a dry run by default, and it never
+deletes, clears or overwrites anything (see [docs/google-sheets.md](docs/google-sheets.md)).
+
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
 repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
@@ -50,6 +53,7 @@ Settings come from environment variables only:
 | `REPO_SIGNALS_MAX_CALLS` | provider call cap, 1 to 500 | `25` |
 | `REPO_SIGNALS_SHEET_ID` | Google Sheet id | unset (WARN) |
 | `REPO_SIGNALS_GITHUB_TOKEN` | GitHub token | unset (WARN) |
+| `REPO_SIGNALS_GOOGLE_CREDENTIALS` | path to a Google service-account JSON key file | unset (WARN) |
 
 `doctor` names variables but never prints their values. `doctor --online` is accepted but not
 implemented yet.

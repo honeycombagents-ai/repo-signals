@@ -1,7 +1,9 @@
 import io
+import json
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 
 import _src  # noqa: F401
@@ -29,8 +31,13 @@ def registry(*providers):
     return r
 
 
+def found(name):
+    return "/usr/bin/" + name
+
+
 def run(env, reg=None, **kw):
     out = io.StringIO()
+    kw.setdefault("which", found)
     code = doctor.run(environ=env, registry=reg or registry(), out=out, **kw)
     return code, out.getvalue()
 
@@ -40,6 +47,23 @@ def lines(text, status):
 
 
 FULL = {config.SHEET_ID: GOOD_SHEET, config.GITHUB_TOKEN: GOOD_TOKEN}
+_TMP = None
+
+
+def setUpModule():
+    """A synthetic service-account file (no real key) so FULL passes every check."""
+    global _TMP
+    _TMP = tempfile.TemporaryDirectory()
+    path = os.path.join(_TMP.name, "sa.json")
+    with open(path, "w") as fh:
+        json.dump({"type": "service_account", "client_email": "svc" + "@" + "example.invalid",
+                   "private_key": "-----BEGIN " + "PRIVATE" + " KEY-----\nsynthetic\n"}, fh)
+    os.chmod(path, 0o600)
+    FULL[config.GOOGLE_CREDENTIALS] = path
+
+
+def tearDownModule():
+    _TMP.cleanup()
 
 
 class PassPaths(unittest.TestCase):
@@ -51,9 +75,12 @@ class PassPaths(unittest.TestCase):
                          "PASS the selected provider needs no environment variables",
                          "PASS REPO_SIGNALS_MAX_CALLS not set: using the default",
                          "PASS dry run is on", "PASS REPO_SIGNALS_SHEET_ID is set",
-                         "PASS REPO_SIGNALS_GITHUB_TOKEN is set"):
+                         "PASS REPO_SIGNALS_GITHUB_TOKEN is set",
+                         "PASS REPO_SIGNALS_GOOGLE_CREDENTIALS is set",
+                         "PASS REPO_SIGNALS_GOOGLE_CREDENTIALS file parses as JSON",
+                         "PASS openssl found on PATH"):
             self.assertIn(expected, out)
-        self.assertIn("doctor: 7 pass, 0 warn, 0 fail", out)
+        self.assertIn("doctor: 10 pass, 0 warn, 0 fail", out)
 
     def test_explicit_provider_and_max_calls(self):
         code, out = run({**FULL, config.PROVIDER: "fake", config.MAX_CALLS: "500"})
@@ -75,13 +102,15 @@ class WarnPaths(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("WARN REPO_SIGNALS_SHEET_ID is missing", out)
         self.assertIn("WARN REPO_SIGNALS_GITHUB_TOKEN is missing", out)
-        self.assertEqual(len(lines(out, "WARN")), 2)
+        self.assertIn("WARN REPO_SIGNALS_GOOGLE_CREDENTIALS is missing", out)
+        self.assertEqual(len(lines(out, "WARN")), 3)
         self.assertEqual(lines(out, "FAIL"), [])
 
     def test_whitespace_only_counts_as_missing(self):
-        code, out = run({config.SHEET_ID: "", config.GITHUB_TOKEN: ""})
+        code, out = run({config.SHEET_ID: "", config.GITHUB_TOKEN: "",
+                         config.GOOGLE_CREDENTIALS: ""})
         self.assertEqual(code, 0, out)
-        self.assertEqual(len(lines(out, "WARN")), 2)
+        self.assertEqual(len(lines(out, "WARN")), 3)
 
 
 class FailPaths(unittest.TestCase):

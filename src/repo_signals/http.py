@@ -1,4 +1,6 @@
-"""A small, strict HTTPS JSON client built on the standard library: GET and POST.
+"""A small, strict HTTPS JSON client built on the standard library: GET, POST and PUT.
+
+There is deliberately no DELETE or PATCH: the transport refuses any other method.
 
 - https only, and only to hosts in the allowlist given at construction;
 - redirects are never followed (a 3xx is an error);
@@ -36,8 +38,11 @@ class RawResponse(NamedTuple):
     body: bytes
 
 
+ALLOWED_METHODS = ("GET", "POST", "PUT")
+
+
 class Transport(Protocol):
-    """GET calls pass four arguments; POST calls add ``method="POST"`` and ``body``."""
+    """GET calls pass four arguments; POST and PUT calls add ``method`` and ``body``."""
 
     def __call__(self, url: str, headers: dict, timeout: float, max_bytes: int,
                  method: str = "GET", body: bytes | None = None) -> RawResponse:
@@ -107,7 +112,7 @@ class UrllibTransport:
     def __call__(self, url, headers, timeout, max_bytes, method="GET", body=None):
         if not url.startswith("https://"):
             raise ProviderError("insecure_scheme")
-        if method not in ("GET", "POST") or (body is not None and not isinstance(body, bytes)):
+        if method not in ALLOWED_METHODS or (body is not None and not isinstance(body, bytes)):
             raise ProviderError("bad_method")
         deadline = time.monotonic() + timeout
         req = urllib.request.Request(url, data=body, headers=headers, method=method)
@@ -182,8 +187,8 @@ class HttpClient:
             raise ProviderError("bad_header")
         return dict(headers)
 
-    def _send(self, url, headers, timeout, body=None):
-        kwargs = {} if body is None else {"method": "POST", "body": body}
+    def _send(self, url, headers, timeout, method="GET", body=None):
+        kwargs = {} if method == "GET" else {"method": method, "body": body}
         try:
             raw = self._transport(url, headers, timeout, self.max_body_bytes, **kwargs)
         except ProviderError:
@@ -206,6 +211,15 @@ class HttpClient:
             data = None
         return JsonResponse(raw.status, data, hdrs)
 
+    @staticmethod
+    def _with_query(url, params):
+        params = {} if params is None else params
+        if not isinstance(params, dict) or not all(
+                isinstance(k, str) and isinstance(v, (str, int)) and not isinstance(v, bool)
+                for k, v in params.items()):
+            raise ProviderError("bad_params")
+        return url + ("?" + urlencode(params) if params else "")
+
     def get_json(self, url, params=None, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
         """GET ``url`` with ``params`` as the query string; return ``(status, parsed JSON)``.
 
@@ -214,34 +228,53 @@ class HttpClient:
         """
         timeout = _check_timeout(timeout)
         self._check_url(url)
-        params = {} if params is None else params
-        if not isinstance(params, dict) or not all(
-                isinstance(k, str) and isinstance(v, (str, int)) and not isinstance(v, bool)
-                for k, v in params.items()):
-            raise ProviderError("bad_params")
+        full = self._with_query(url, params)
         headers = self._check_headers(headers)
-        full = url + ("?" + urlencode(params) if params else "")
         return self._send(full, headers, timeout)
 
-    def post_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
-        """POST ``payload`` (a dict) as a JSON body; return ``(status, parsed JSON)``.
-
-        Same rules as ``get_json``: https only, allowlisted host, no redirects, body cap,
-        timeout, code-only errors. The URL may not carry a query string. The encoded
-        request body is capped at MAX_REQUEST_BYTES.
-        """
+    def _send_body(self, method, url, body, content_type, headers, timeout, params):
         timeout = _check_timeout(timeout)
         self._check_url(url)
-        if not isinstance(payload, dict):
-            raise ProviderError("bad_payload")
-        try:
-            body = json.dumps(payload, separators=(",", ":"), ensure_ascii=True,
-                              allow_nan=False).encode("ascii")
-        except (TypeError, ValueError, RecursionError):
-            raise ProviderError("bad_payload") from None
+        full = self._with_query(url, params)
         if len(body) > MAX_REQUEST_BYTES:
             raise ProviderError("payload_too_large")
         headers = self._check_headers(headers)
         if not any(k.lower() == "content-type" for k in headers):
-            headers["Content-Type"] = "application/json"
-        return self._send(url, headers, timeout, body)
+            headers["Content-Type"] = content_type
+        return self._send(full, headers, timeout, method, body)
+
+    @staticmethod
+    def _json_body(payload):
+        if not isinstance(payload, dict):
+            raise ProviderError("bad_payload")
+        try:
+            return json.dumps(payload, separators=(",", ":"), ensure_ascii=True,
+                              allow_nan=False).encode("ascii")
+        except (TypeError, ValueError, RecursionError):
+            raise ProviderError("bad_payload") from None
+
+    def post_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT,
+                  params=None) -> JsonResponse:
+        """POST ``payload`` (a dict) as a JSON body; return ``(status, parsed JSON)``.
+
+        Same rules as ``get_json``: https only, allowlisted host, no redirects, body cap,
+        timeout, code-only errors. Query parameters go in ``params``, never in ``url``.
+        The encoded request body is capped at MAX_REQUEST_BYTES.
+        """
+        return self._send_body("POST", url, self._json_body(payload), "application/json",
+                               headers, timeout, params)
+
+    def put_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT,
+                 params=None) -> JsonResponse:
+        """PUT ``payload`` (a dict) as a JSON body. Same rules as ``post_json``."""
+        return self._send_body("PUT", url, self._json_body(payload), "application/json",
+                               headers, timeout, params)
+
+    def post_form(self, url, fields, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
+        """POST ``fields`` (a dict of strings) form-encoded. Same rules as ``post_json``."""
+        if not isinstance(fields, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) for k, v in fields.items()):
+            raise ProviderError("bad_payload")
+        body = urlencode(fields).encode("ascii")
+        return self._send_body("POST", url, body, "application/x-www-form-urlencoded",
+                               headers, timeout, None)

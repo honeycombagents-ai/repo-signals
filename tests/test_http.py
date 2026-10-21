@@ -311,6 +311,70 @@ class PostJson(LeakFree, unittest.TestCase):
                 self.assertTrue(e.__suppress_context__)
 
 
+class PutJsonAndPostForm(LeakFree, unittest.TestCase):
+    def test_put_json(self):
+        t = FakeTransport(ok(b'{"updated": 1}'))
+        r = HttpClient((HOST,), transport=t).put_json(URL, {"values": [["a"]]}, {"X": "y"}, 6,
+                                                       {"opt": "RAW"})
+        self.assertEqual(tuple(r), (200, {"updated": 1}))
+        call = t.calls[0]
+        self.assertEqual((call["method"], call["url"], call["body"]),
+                         ("PUT", URL + "?opt=RAW", b'{"values":[["a"]]}'))
+        self.assertEqual(call["headers"]["Content-Type"], "application/json")
+
+    def test_post_json_params_go_in_the_query(self):
+        t = FakeTransport(ok())
+        HttpClient((HOST,), transport=t).post_json(URL, {}, None, 5, {"a": "1", "b": 2})
+        self.assertEqual(t.calls[0]["url"], URL + "?a=1&b=2")
+        self.call_raises_put(HttpClient((HOST,), transport=t), "bad_params", params={"a": None})
+
+    def test_post_form(self):
+        t = FakeTransport(ok(b'{"t": 1}'))
+        HttpClient((HOST,), transport=t).post_form(URL, {"grant": "x y", "a": "1&2"})
+        call = t.calls[0]
+        self.assertEqual((call["method"], call["body"]), ("POST", b"grant=x+y&a=1%262"))
+        self.assertEqual(call["headers"]["Content-Type"], "application/x-www-form-urlencoded")
+        for bad in ({"a": 1}, ["a"], {1: "a"}):
+            with self.subTest(bad=bad), self.assertRaises(ProviderError) as cm:
+                HttpClient((HOST,), transport=t).post_form(URL, bad)
+            self.assertEqual(cm.exception.code, "bad_payload")
+        self.assertEqual(len(t.calls), 1)
+
+    def call_raises_put(self, client, code, url=URL, params=None):
+        with self.assertRaises(ProviderError) as cm:
+            client.put_json(url, {"q": "SENTINELBODY"}, {"X-Key": "SENTINELHEADER"}, 5, params)
+        self.assertEqual(cm.exception.code, code)
+        self.assertLeakFree(cm.exception)
+
+    def test_put_refusals(self):
+        t = FakeTransport(ok())
+        c = HttpClient((HOST,), transport=t)
+        self.call_raises_put(c, "insecure_scheme", "http://api.example.com/x")
+        self.call_raises_put(c, "host_not_allowed", "https://evil.example.com/SENTINELURLPART")
+        self.call_raises_put(c, "bad_url", URL + "?SENTINELQUERY=1")
+        with self.assertRaises(ProviderError) as cm:
+            c.post_form("https://evil.example.com/x", {"assertion": "SENTINELBODY"})
+        self.assertEqual(cm.exception.code, "host_not_allowed")
+        self.assertEqual(t.calls, [])
+        t = FakeTransport(ok(b"", status=308, headers={"Location": URL}))
+        self.call_raises_put(HttpClient((HOST,), transport=t), "redirect_refused")
+        self.assertEqual(len(t.calls), 1)
+        t = FakeTransport(ok(b'"' + b"SENTINELBODY" * 100 + b'"'))
+        self.call_raises_put(HttpClient((HOST,), transport=t, max_body_bytes=500),
+                             "response_too_large")
+
+    def test_put_passes_through_urllib(self):
+        o = FakeOpener(FakeResp(200, b"{}"))
+        UrllibTransport(opener=o)(URL, {}, 4.0, 100, method="PUT", body=b"{}")
+        self.assertEqual(o.requests[0][0].get_method(), "PUT")
+
+    def test_no_delete_or_patch_anywhere(self):
+        self.assertEqual(http.ALLOWED_METHODS, ("GET", "POST", "PUT"))
+        for name in dir(HttpClient):
+            for bad in ("delete", "patch", "clear"):
+                self.assertNotIn(bad, name.lower())
+
+
 # ---- UrllibTransport, with a fake opener or a fake HTTPS handler (no sockets) ----
 
 class FakeResp:
@@ -372,7 +436,8 @@ class TransportTests(LeakFree, unittest.TestCase):
 
     def test_refuses_other_methods_and_bodies(self):
         o = FakeOpener(FakeResp())
-        for kw in ({"method": "PUT"}, {"method": "DELETE"}, {"method": "POST", "body": "str"}):
+        for kw in ({"method": "PATCH"}, {"method": "DELETE"}, {"method": "HEAD"},
+                   {"method": "POST", "body": "str"}):
             with self.subTest(kw=kw), self.assertRaises(ProviderError) as cm:
                 UrllibTransport(opener=o)(URL, {}, 4.0, 100, **kw)
             self.assertEqual(cm.exception.code, "bad_method")
