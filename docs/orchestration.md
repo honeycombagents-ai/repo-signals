@@ -25,7 +25,8 @@ rows = fill_drafts(rows, TemplateDrafter(), evidence_lookup_from(result))
    (see [matching.md](matching.md)). Only usable matches are searched: confidence `user` or
    `verified-domain`. Unmatched, ambiguous, `website_mismatch`, `website-only` and `name-only`
    targets get no search.
-4. **Searches.** Each usable target gets one repository search per term. The search passes the
+4. **Searches.** Each usable target gets one repository search per term, matching the term
+   against repository names only (`in:name`). The search passes the
    signal's language, if set, and a push date of today minus `pushed_within_days`.
 5. **Filters.** Every item is read from its allowlisted keys, then passed through the existing
    filters: organisation owner, not a fork, not archived, not private, a well-formed name and
@@ -36,16 +37,17 @@ rows = fill_drafts(rows, TemplateDrafter(), evidence_lookup_from(result))
 
 ## Why the term must be in the name
 
-A search can match a repository through its name, its description or its topics. The Evidence
-summary says:
+The repository search asks GitHub for name matches only (`in:name`, an unverified qualifier;
+see [github-client.md](github-client.md)). The Evidence summary says:
 
 `The public repository example-org/examplelib-tools matches the term examplelib, last pushed on 2026-09-30.`
 
 The drafter quotes that sentence **verbatim** in an email draft, and a person may send it. If the
 term appeared only in the description or topics, the sentence would not be literally true of the
-repository's name, and the description itself is never used (it is free text). So an item
-becomes Evidence only if the term appears in the repository name, ignoring case. Every other hit
-is dropped and counted as `term_not_in_name`.
+repository's name, and the description itself is never used (it is free text). So the term
+check stays as a **second guard**, in case the search returns anything else: an item becomes
+Evidence only if the term appears in the repository name, ignoring case. Every other hit is
+dropped and counted as `term_not_in_name`.
 
 ## Partial results
 

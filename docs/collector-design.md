@@ -77,7 +77,7 @@ match it to an organisation (section 3) or report it as unmatched.
 |---|---|---|
 | `schema` | yes | must be `1` |
 | `name` | yes | a label for the signal: lowercase letters, digits and `-`, up to 48 characters |
-| `keywords` | yes | terms matched against repository names, descriptions and topics |
+| `keywords` | yes | terms matched against repository names only (`in:name`) |
 | `language` | no | keep only repositories whose primary language matches |
 | `pushed_within_days` | no | keep only repositories pushed within this many days (1 to 3650, as `collector/signal.py` enforces; this table previously said 1 to 730); defaults to 365 |
 | `min_repo_age_days` | no | keep only repositories at least this old (0 to 3650) |
@@ -176,7 +176,7 @@ which the collector **never requests**. Links to it are only copied into Evidenc
 |---|---|---|
 | organisation profile | `GET /orgs/{org}` | login, display name, website (`blog`), verified flag (`is_verified`), `html_url`, `type` |
 | candidate organisations | `GET /search/users?q=<name>+type:org` | method B candidates only; counts against the search limit |
-| repositories matching a keyword | `GET /search/repositories?q=<term>+org:<org>+fork:false+archived:false[+language:<l>][+pushed:>=<date>][+created:<=<date>]&per_page=<n>` | returns `full_name`, `html_url`, `description`, `language`, `pushed_at`, `created_at`, `fork`, `archived`, `topics`, `owner.type`; `total_count`; `incomplete_results` |
+| repositories matching a keyword | `GET /search/repositories?q=<term>+in:name+org:<org>+fork:false+archived:false[+language:<l>][+pushed:>=<date>][+created:<=<date>]&per_page=<n>` | returns `full_name`, `html_url`, `description`, `language`, `pushed_at`, `created_at`, `fork`, `archived`, `topics`, `owner.type`; `total_count`; `incomplete_results` |
 | one repository (re-check) | `GET /repos/{owner}/{repo}` | only to confirm a repository still exists; not needed in v1 if search results carry `fork` and `archived` |
 | remaining limits | `GET /rate_limit` | for a future `doctor --online` only; v1 `doctor` stays offline |
 
@@ -266,7 +266,7 @@ Each accepted hit becomes one `models.Evidence(company_domain, summary, url, kin
 
 | kind | when | summary template |
 |---|---|---|
-| `repo` | the repository's **name** contains the term, ignoring case (a hit through the description or topics alone is dropped as `term_not_in_name`, so the summary is literally true) | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
+| `repo` | the repository's **name** contains the term, ignoring case. The search asks for name matches only (`in:name`), and any other hit is still dropped as `term_not_in_name`, so the summary is literally true | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
 
 `{language_clause}` is either empty or ` and its primary language on GitHub is {language}`.
 `{pushed_date}` is the `pushed_at` date as `YYYY-MM-DD`. A rendered example, with synthetic

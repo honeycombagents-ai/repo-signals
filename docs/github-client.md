@@ -46,8 +46,9 @@ if a value fails:
 
 The search query is assembled only from these validated values and fixed qualifiers. It is
 passed through `HttpClient`'s params, so it is URL-encoded and never pasted into a URL. A
-repository search always excludes forks (`fork:false`) and archived repositories
-(`archived:false`) and asks for at most 5 results. There is no pagination: the `Link` header is
+repository search matches the term against repository **names only** (`in:name`), never
+descriptions, topics or READMEs. It always excludes forks (`fork:false`) and archived
+repositories (`archived:false`), and it asks for at most 5 results. There is no pagination: the `Link` header is
 ignored and a second page is never requested.
 
 ## Rate limits
@@ -98,6 +99,8 @@ call, check:
 - [ ] `QUALIFIER_TYPE_ORG`, `QUALIFIER_ORG`, `QUALIFIER_IN`, `QUALIFIER_NO_FORKS`,
       `QUALIFIER_NO_ARCHIVED`, `QUALIFIER_LANGUAGE`, `QUALIFIER_PUSHED_AFTER`: the search
       qualifiers and their syntax
+- [ ] confirm the `in:name` qualifier (`QUALIFIER_IN`) against GitHub's current documentation:
+      that it limits a repository search to names only
 - [ ] `RESP_ITEMS`, `RESP_TOTAL_COUNT`, `RESP_INCOMPLETE`: the search response fields
 - [ ] `ORG_KEYS`, `CANDIDATE_KEYS`, `REPO_KEYS`, `OWNER_KEYS`: the fields kept from each response
 - [ ] that 403 and 429 are the rate-limit statuses, and what a secondary rate limit looks like

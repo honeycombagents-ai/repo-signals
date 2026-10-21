@@ -209,13 +209,43 @@ class Validation(Case):
         self.assertEqual(urlsplit(urls[2])._replace(query="").geturl(),
                          API_BASE + api.SEARCH_REPOS_PATH)
         self.assertEqual(self.query(2), {
-            "q": ["c++lib in:name,description,topics org:example-org fork:false archived:false "
+            "q": ["c++lib in:name org:example-org fork:false archived:false "
                   "language:C# pushed:>=2025-10-21"],
             "per_page": ["5"]})
         for url in urls:
             self.assertEqual(urlsplit(url).netloc, API_HOST)
             self.assertNotIn(" ", url)
             self.assertNotIn("#", url)
+
+    def test_repo_searches_match_names_only(self):
+        combos = [("examplelib", None, None), ("c++lib", "C#", None),
+                  ("example-sdk", None, "2025-01-01"), ("ab", "Go", date(2025, 6, 1))]
+        c = self.client(ok(repos()))
+        for term, language, pushed in combos:
+            c.search_repos(term, "example-org", language, pushed)
+        for n, (term, language, pushed) in enumerate(combos):
+            with self.subTest(term=term):
+                q = self.query(n)["q"][0]
+                tokens = q.split(" ")
+                self.assertEqual(tokens.count("in:name"), 1)
+                self.assertEqual([t for t in tokens if t.startswith("in:")], ["in:name"])
+                for word in ("description", "topics", "in:readme", "readme"):
+                    self.assertNotIn(word, q)
+                expected = [term, "in:name", "org:example-org", "fork:false", "archived:false"]
+                if language:
+                    expected.append(f"language:{language}")
+                if pushed:
+                    day = pushed if isinstance(pushed, str) else pushed.isoformat()
+                    expected.append(f"pushed:>={day}")
+                self.assertEqual(tokens, expected)
+        self.assertEqual(api.QUALIFIER_IN, "in:name")
+
+    def test_term_still_validated_before_any_request(self):
+        c = self.client(ok(repos()))
+        for bad in ("SENTINEL in:description", "x:in:readme", "a", "topics:x", "-SENTINEL"):
+            with self.subTest(bad=bad):
+                self.raises("bad_term", c.search_repos, bad, "example-org")
+        self.assertEqual(self.transport.calls, [])
 
     def test_pushed_after_accepts_a_date_or_a_string(self):
         c = self.client(ok(repos()))
