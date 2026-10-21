@@ -77,8 +77,8 @@ from one fixed template. There is only one kind in v1, `repo`. There is no `topi
 Synthetic examples:
 
 ```
-The public repository example-org/widget matches the term examplelib and its primary language on GitHub is Python, last pushed on 2026-09-30.
-The public repository example-org/widget matches the term examplelib, last pushed on 2026-09-30.
+The public repository example-org/examplelib-tools matches the term examplelib and its primary language on GitHub is Python, last pushed on 2026-09-30.
+The public repository example-org/examplelib-js matches the term examplelib, last pushed on 2026-09-30.
 ```
 
 Every inserted value is checked, and the hit is dropped (not patched) with a code when a check
@@ -96,6 +96,11 @@ fails:
 | `bad_evidence` | `Evidence` itself refuses the result (for example, a bad company domain) |
 
 The link goes only in `Evidence.url`, never inside the summary.
+
+When the collector runs (see [orchestration.md](orchestration.md)), a hit becomes Evidence only if
+the term appears in the repository **name**, ignoring case. A hit that matched only through the
+description or topics is dropped as `term_not_in_name`, because the summary says "matches the
+term" and the drafter quotes it verbatim.
 
 ## Why the summaries are fixed
 

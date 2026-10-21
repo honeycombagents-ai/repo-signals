@@ -266,13 +266,13 @@ Each accepted hit becomes one `models.Evidence(company_domain, summary, url, kin
 
 | kind | when | summary template |
 |---|---|---|
-| `repo` | the repository's name or description matches a keyword | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
+| `repo` | the repository's **name** contains the term, ignoring case (a hit through the description or topics alone is dropped as `term_not_in_name`, so the summary is literally true) | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
 
 `{language_clause}` is either empty or ` and its primary language on GitHub is {language}`.
 `{pushed_date}` is the `pushed_at` date as `YYYY-MM-DD`. A rendered example, with synthetic
 values:
 
-`The public repository example-org/widget matches the term examplelib and its primary language on GitHub is Python, last pushed on 2026-09-30.`
+`The public repository example-org/examplelib-tools matches the term examplelib and its primary language on GitHub is Python, last pushed on 2026-09-30.`
 
 ### Rules for every summary
 
