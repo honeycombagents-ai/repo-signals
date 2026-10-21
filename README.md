@@ -34,6 +34,10 @@ implemented.
 A Google Sheet writer appends people for review. It runs as a dry run by default, and it never
 deletes, clears or overwrites anything (see [docs/google-sheets.md](docs/google-sheets.md)).
 
+An email drafter fills the sheet's `email_draft` column from plain-text templates. Every draft
+is grounded on public evidence and includes your postal address and opt-out text. A suppression
+list is honoured. Nothing is ever sent (see [docs/drafting.md](docs/drafting.md)).
+
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
 repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
@@ -54,6 +58,8 @@ Settings come from environment variables only:
 | `REPO_SIGNALS_SHEET_ID` | Google Sheet id | unset (WARN) |
 | `REPO_SIGNALS_GITHUB_TOKEN` | GitHub token | unset (WARN) |
 | `REPO_SIGNALS_GOOGLE_CREDENTIALS` | path to a Google service-account JSON key file | unset (WARN) |
+| `REPO_SIGNALS_SENDER_NAME`, `_SENDER_ROLE`, `_ORG_NAME`, `_POSTAL_ADDRESS`, `_OPTOUT_TEXT` | sender details put in every draft | unset (WARN; drafting refuses) |
+| `REPO_SIGNALS_SUPPRESSION_FILE` | path to a suppression list (one email or domain per line) | unset (WARN) |
 
 `doctor` names variables but never prints their values. `doctor --online` is accepted but not
 implemented yet.

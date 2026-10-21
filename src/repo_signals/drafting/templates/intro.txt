@@ -1,0 +1,15 @@
+Subject: A public signal from {company_domain}
+
+Hi {first_name},
+
+I came across this public signal about {company_domain}:
+{evidence_summary}
+Source: {evidence_url}
+
+I am {sender_name}, {sender_role} at {org_name}. I am writing because it may be relevant to your work as {title}. If it is not, no reply is needed.
+
+{sender_name}
+{org_name}
+{postal_address}
+
+{optout_text}

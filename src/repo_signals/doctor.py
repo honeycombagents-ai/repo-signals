@@ -3,8 +3,10 @@
 Prints one line per check: PASS, WARN or FAIL. Lines name environment
 variables, never their values. Reads the environment and, when
 REPO_SIGNALS_GOOGLE_CREDENTIALS is set, that one file (to check that it parses
-and has the expected key names; no value from it is ever printed). Looks for
-openssl on PATH without running it. Makes no network call.
+and has the expected key names; no value from it is ever printed). When
+REPO_SIGNALS_SUPPRESSION_FILE is set, it parses that file and prints counts
+only. It parses the built-in drafting templates. Looks for openssl on PATH
+without running it. Makes no network call.
 Exit status: 0 if nothing FAILs, 1 otherwise.
 """
 import os
@@ -14,6 +16,9 @@ import sys
 from . import config
 from .budget import HARD_MAX_CALLS
 from .providers.registry import UnknownProviderError, default_registry, planned_note
+from .drafting.base import DraftError
+from .drafting.suppression import load_suppression
+from .drafting.template import BUILTIN_TEMPLATES, load_template
 from .sheets import google_api
 from .sheets.auth import inspect_credentials
 
@@ -122,6 +127,51 @@ def check_openssl(which):
                    "you can supply your own Signer)")]
 
 
+def check_sender(environ):
+    lines = []
+    for var in config.SENDER_VARS:
+        try:
+            value = config.parse_sender_var(environ, var)
+        except config.ConfigError as e:
+            lines.append((FAIL, str(e)))
+            continue
+        if value is None:
+            lines.append((WARN, f"{var} is missing (drafting refuses without it)"))
+        else:
+            lines.append((PASS, f"{var} is set"))
+    return lines
+
+
+def check_suppression(environ):
+    var = config.SUPPRESSION_FILE
+    try:
+        path = config.parse_suppression_file(environ)
+    except config.ConfigError as e:
+        return [(FAIL, str(e))]
+    if path is None:
+        return [(WARN, f"{var} is missing (no suppression list: nobody is excluded from "
+                       "drafting)")]
+    try:
+        listed = load_suppression(path)
+    except DraftError as e:
+        return [(PASS, f"{var} is set"), (FAIL, f"{var} file is not usable ({e.code})")]
+    return [(PASS, f"{var} is set"),
+            (PASS, f"{var} file parses: {len(listed.emails)} email(s), "
+                   f"{len(listed.domains)} domain(s)")]
+
+
+def check_templates():
+    bad = []
+    for name in BUILTIN_TEMPLATES:
+        try:
+            load_template(name)
+        except DraftError:
+            bad.append(name)
+    if bad:
+        return [(FAIL, f"drafting templates missing or invalid: {', '.join(bad)}")]
+    return [(PASS, f"drafting templates present and valid ({', '.join(BUILTIN_TEMPLATES)})")]
+
+
 def run_checks(environ, registry, settings=None, version_info=None, which=None):
     settings = settings if settings is not None else config.Settings()
     version_info = version_info if version_info is not None else sys.version_info
@@ -137,6 +187,9 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
                         "needed before GitHub signals can be collected"),
         *check_google_credentials(environ),
         *check_openssl(which),
+        *check_sender(environ),
+        *check_suppression(environ),
+        *check_templates(),
     ]
 
 

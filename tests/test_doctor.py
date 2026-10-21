@@ -46,7 +46,10 @@ def lines(text, status):
     return [l for l in text.splitlines() if l.startswith(status + " ")]
 
 
-FULL = {config.SHEET_ID: GOOD_SHEET, config.GITHUB_TOKEN: GOOD_TOKEN}
+FULL = {config.SHEET_ID: GOOD_SHEET, config.GITHUB_TOKEN: GOOD_TOKEN,
+        config.SENDER_NAME: "Avery Alder", config.SENDER_ROLE: "Engineer",
+        config.ORG_NAME: "Example Org", config.POSTAL_ADDRESS: "1 Example Street, Example City",
+        config.OPTOUT_TEXT: "Reply stop to opt out."}
 _TMP = None
 
 
@@ -60,6 +63,10 @@ def setUpModule():
                    "private_key": "-----BEGIN " + "PRIVATE" + " KEY-----\nsynthetic\n"}, fh)
     os.chmod(path, 0o600)
     FULL[config.GOOGLE_CREDENTIALS] = path
+    suppression = os.path.join(_TMP.name, "suppression.txt")
+    with open(suppression, "w") as fh:
+        fh.write("# synthetic\nexample.invalid\n")
+    FULL[config.SUPPRESSION_FILE] = suppression
 
 
 def tearDownModule():
@@ -78,9 +85,12 @@ class PassPaths(unittest.TestCase):
                          "PASS REPO_SIGNALS_GITHUB_TOKEN is set",
                          "PASS REPO_SIGNALS_GOOGLE_CREDENTIALS is set",
                          "PASS REPO_SIGNALS_GOOGLE_CREDENTIALS file parses as JSON",
-                         "PASS openssl found on PATH"):
+                         "PASS openssl found on PATH",
+                         "PASS REPO_SIGNALS_POSTAL_ADDRESS is set",
+                         "PASS REPO_SIGNALS_SUPPRESSION_FILE file parses: 0 email(s), 1 domain(s)",
+                         "PASS drafting templates present and valid"):
             self.assertIn(expected, out)
-        self.assertIn("doctor: 10 pass, 0 warn, 0 fail", out)
+        self.assertIn("doctor: 18 pass, 0 warn, 0 fail", out)
 
     def test_explicit_provider_and_max_calls(self):
         code, out = run({**FULL, config.PROVIDER: "fake", config.MAX_CALLS: "500"})
@@ -103,14 +113,17 @@ class WarnPaths(unittest.TestCase):
         self.assertIn("WARN REPO_SIGNALS_SHEET_ID is missing", out)
         self.assertIn("WARN REPO_SIGNALS_GITHUB_TOKEN is missing", out)
         self.assertIn("WARN REPO_SIGNALS_GOOGLE_CREDENTIALS is missing", out)
-        self.assertEqual(len(lines(out, "WARN")), 3)
+        self.assertIn("WARN REPO_SIGNALS_OPTOUT_TEXT is missing", out)
+        self.assertIn("WARN REPO_SIGNALS_SUPPRESSION_FILE is missing", out)
+        self.assertEqual(len(lines(out, "WARN")), 9)
         self.assertEqual(lines(out, "FAIL"), [])
 
     def test_whitespace_only_counts_as_missing(self):
         code, out = run({config.SHEET_ID: "", config.GITHUB_TOKEN: "",
-                         config.GOOGLE_CREDENTIALS: ""})
+                         config.GOOGLE_CREDENTIALS: "", config.SENDER_NAME: "   ",
+                         config.SUPPRESSION_FILE: ""})
         self.assertEqual(code, 0, out)
-        self.assertEqual(len(lines(out, "WARN")), 3)
+        self.assertEqual(len(lines(out, "WARN")), 9)
 
 
 class FailPaths(unittest.TestCase):

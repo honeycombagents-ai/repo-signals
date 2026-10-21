@@ -25,18 +25,15 @@ from ..providers.base import ProviderError
 from . import google_api as g
 from .auth import ServiceAccountAuth
 from .client import DEFAULT_TAB, SheetsClient, build_http
+from .cells import guard_cell, mask_email
 from .layout import COLUMNS, LAST_COLUMN, PROTECTED_COLUMNS
 
 __all__ = ["COLUMNS", "PROTECTED_COLUMNS", "SheetWriter", "WriteResult", "guard_cell",
            "mask_email"]
 
-FORMULA_PREFIXES = ("=", "+", "-", "@")
-CONTROL_PREFIXES = ("\t", "\r", "\n")
-MAX_CELL_CHARS = 50000
 DRY_RUN_PREVIEW_ROWS = 3
 DRY_RUN_SHOWN = ("name", "email", "title", "company_domain", "source", "confidence",
                  "signal_evidence")
-_PLAIN_NUMBER = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?")
 _RUN_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _I = {name: i for i, name in enumerate(COLUMNS)}
 
@@ -45,28 +42,6 @@ class WriteResult(NamedTuple):
     appended: int
     skipped: int
     dry_run: bool
-
-
-def guard_cell(value: str) -> str:
-    """Quote a value that a spreadsheet could read as a formula. Plain numbers pass."""
-    if not isinstance(value, str):
-        raise TypeError("cell values are strings")
-    value = value[:MAX_CELL_CHARS]
-    if value.startswith(CONTROL_PREFIXES) or (
-            value.lstrip().startswith(FORMULA_PREFIXES)
-            and not _PLAIN_NUMBER.fullmatch(value.strip())):
-        return "'" + value
-    return value
-
-
-def mask_email(email: str) -> str:
-    """``j***@example.invalid`` for display. Empty stays empty."""
-    if not email:
-        return ""
-    local, at, domain = email.partition("@")
-    if not at or not local or not domain:
-        return "***"
-    return local[0] + "***@" + domain
 
 
 def _display(value, width=40):

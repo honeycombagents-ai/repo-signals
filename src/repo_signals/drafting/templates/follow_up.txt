@@ -1,0 +1,15 @@
+Subject: {company_domain}: one short, optional note
+
+Hi {first_name},
+
+One short, optional note about a public signal from {company_domain}:
+{evidence_summary}
+Source: {evidence_url}
+
+If this is useful to you as {title}, a reply is welcome. If not, please ignore this message.
+
+{sender_name}, {sender_role}
+{org_name}
+{postal_address}
+
+{optout_text}
