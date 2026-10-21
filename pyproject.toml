@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "repo-signals"
 version = "0.0.0"
@@ -9,5 +13,11 @@ authors = [{ name = "honeycombagents.ai" }]
 requires-python = ">=3.12"
 dependencies = []
 
+[project.scripts]
+repo-signals = "repo_signals.cli:main"
+
 [project.urls]
 Homepage = "https://honeycombagents.ai"
+
+[tool.setuptools.packages.find]
+where = ["src"]

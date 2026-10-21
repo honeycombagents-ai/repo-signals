@@ -15,6 +15,44 @@ For each company it finds, it:
 
 A human reviews every draft and sends it. Repo Signals itself never sends anything.
 
+## Status and quick start
+
+**Early. Dry run only.** There is no live mode yet and nothing makes a network call. What exists
+today:
+
+- the people-provider interface,
+- a built-in `fake` provider that returns synthetic people on `example.invalid`,
+- a hard call budget,
+- settings read from environment variables, and
+- an offline `doctor` command.
+
+The Hunter.io and Apollo.io adapters are planned but not written yet.
+
+```sh
+python3 -m pip install -e .       # Python 3.12 or newer
+repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
+```
+
+Without installing, you can run it from the repo root:
+
+```sh
+PYTHONPATH=src python3 -m repo_signals doctor
+```
+
+Settings come from environment variables only:
+
+| variable | meaning | default |
+|---|---|---|
+| `REPO_SIGNALS_PROVIDER` | people provider name | `fake` |
+| `REPO_SIGNALS_MAX_CALLS` | provider call cap, 1 to 500 | `25` |
+| `REPO_SIGNALS_SHEET_ID` | Google Sheet id | unset (WARN) |
+| `REPO_SIGNALS_GITHUB_TOKEN` | GitHub token | unset (WARN) |
+
+`doctor` names variables but never prints their values. `doctor --online` is accepted but not
+implemented yet.
+
+To add your own provider, see [docs/adapters.md](docs/adapters.md).
+
 ## Safety defaults
 
 - **Dry run first.** A dry run makes no paid calls and writes nothing.
