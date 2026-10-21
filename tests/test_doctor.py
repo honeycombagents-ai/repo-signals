@@ -67,6 +67,11 @@ def setUpModule():
     with open(suppression, "w") as fh:
         fh.write("# synthetic\nexample.invalid\n")
     FULL[config.SUPPRESSION_FILE] = suppression
+    signal = os.path.join(_TMP.name, "signal.toml")
+    with open(signal, "w") as fh:
+        fh.write('name = "synthetic"\nterms = ["examplelib"]\n\n[[targets]]\n'
+                 'domain = "example.com"\norg = "example-org"\n')
+    FULL[config.SIGNAL_FILE] = signal
 
 
 def tearDownModule():
@@ -88,9 +93,10 @@ class PassPaths(unittest.TestCase):
                          "PASS openssl found on PATH",
                          "PASS REPO_SIGNALS_POSTAL_ADDRESS is set",
                          "PASS REPO_SIGNALS_SUPPRESSION_FILE file parses: 0 email(s), 1 domain(s)",
-                         "PASS drafting templates present and valid"):
+                         "PASS drafting templates present and valid",
+                         "PASS REPO_SIGNALS_SIGNAL_FILE file parses: 1 term(s), 1 target(s)"):
             self.assertIn(expected, out)
-        self.assertIn("doctor: 18 pass, 0 warn, 0 fail", out)
+        self.assertIn("doctor: 20 pass, 0 warn, 0 fail", out)
 
     def test_explicit_provider_and_max_calls(self):
         code, out = run({**FULL, config.PROVIDER: "fake", config.MAX_CALLS: "500"})
@@ -115,15 +121,16 @@ class WarnPaths(unittest.TestCase):
         self.assertIn("WARN REPO_SIGNALS_GOOGLE_CREDENTIALS is missing", out)
         self.assertIn("WARN REPO_SIGNALS_OPTOUT_TEXT is missing", out)
         self.assertIn("WARN REPO_SIGNALS_SUPPRESSION_FILE is missing", out)
-        self.assertEqual(len(lines(out, "WARN")), 9)
+        self.assertIn("WARN REPO_SIGNALS_SIGNAL_FILE is missing", out)
+        self.assertEqual(len(lines(out, "WARN")), 10)
         self.assertEqual(lines(out, "FAIL"), [])
 
     def test_whitespace_only_counts_as_missing(self):
         code, out = run({config.SHEET_ID: "", config.GITHUB_TOKEN: "",
                          config.GOOGLE_CREDENTIALS: "", config.SENDER_NAME: "   ",
-                         config.SUPPRESSION_FILE: ""})
+                         config.SUPPRESSION_FILE: "", config.SIGNAL_FILE: ""})
         self.assertEqual(code, 0, out)
-        self.assertEqual(len(lines(out, "WARN")), 9)
+        self.assertEqual(len(lines(out, "WARN")), 10)
 
 
 class FailPaths(unittest.TestCase):

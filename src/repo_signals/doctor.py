@@ -5,8 +5,9 @@ variables, never their values. Reads the environment and, when
 REPO_SIGNALS_GOOGLE_CREDENTIALS is set, that one file (to check that it parses
 and has the expected key names; no value from it is ever printed). When
 REPO_SIGNALS_SUPPRESSION_FILE is set, it parses that file and prints counts
-only. It parses the built-in drafting templates. Looks for openssl on PATH
-without running it. Makes no network call.
+only. It parses the built-in drafting templates and, when
+REPO_SIGNALS_SIGNAL_FILE is set, the signal file (counts only). Looks for
+openssl on PATH without running it. Makes no network call.
 Exit status: 0 if nothing FAILs, 1 otherwise.
 """
 import os
@@ -16,6 +17,7 @@ import sys
 from . import config
 from .budget import HARD_MAX_CALLS
 from .providers.registry import UnknownProviderError, default_registry, planned_note
+from .collector.signal import SignalError, load_signal
 from .drafting.base import DraftError
 from .drafting.suppression import load_suppression
 from .drafting.template import BUILTIN_TEMPLATES, load_template
@@ -172,6 +174,23 @@ def check_templates():
     return [(PASS, f"drafting templates present and valid ({', '.join(BUILTIN_TEMPLATES)})")]
 
 
+def check_signal_file(environ):
+    var = config.SIGNAL_FILE
+    try:
+        path = config.parse_signal_file(environ)
+    except config.ConfigError as e:
+        return [(FAIL, str(e))]
+    if path is None:
+        return [(WARN, f"{var} is missing (needed before signals can be collected)")]
+    try:
+        signal = load_signal(path)
+    except SignalError as e:
+        return [(PASS, f"{var} is set"), (FAIL, f"{var} file is not usable ({e.code})")]
+    return [(PASS, f"{var} is set"),
+            (PASS, f"{var} file parses: {len(signal.terms)} term(s), "
+                   f"{len(signal.targets)} target(s)")]
+
+
 def run_checks(environ, registry, settings=None, version_info=None, which=None):
     settings = settings if settings is not None else config.Settings()
     version_info = version_info if version_info is not None else sys.version_info
@@ -190,6 +209,7 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_sender(environ),
         *check_suppression(environ),
         *check_templates(),
+        *check_signal_file(environ),
     ]
 
 

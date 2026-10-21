@@ -38,8 +38,9 @@ An email drafter fills the sheet's `email_draft` column from plain-text template
 is grounded on public evidence and includes your postal address and opt-out text. A suppression
 list is honoured. Nothing is ever sent (see [docs/drafting.md](docs/drafting.md)).
 
-A GitHub signal collector is designed but not built yet (see
-[docs/collector-design.md](docs/collector-design.md)).
+A GitHub signal collector is designed (see [docs/collector-design.md](docs/collector-design.md)).
+So far it validates a signal file and prints a dry-run plan with `repo-signals collect --dry-run`;
+it makes no network call (see [docs/signal-file.md](docs/signal-file.md)).
 
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
@@ -63,6 +64,7 @@ Settings come from environment variables only:
 | `REPO_SIGNALS_GOOGLE_CREDENTIALS` | path to a Google service-account JSON key file | unset (WARN) |
 | `REPO_SIGNALS_SENDER_NAME`, `_SENDER_ROLE`, `_ORG_NAME`, `_POSTAL_ADDRESS`, `_OPTOUT_TEXT` | sender details put in every draft | unset (WARN; drafting refuses) |
 | `REPO_SIGNALS_SUPPRESSION_FILE` | path to a suppression list (one email or domain per line) | unset (WARN) |
+| `REPO_SIGNALS_SIGNAL_FILE` | path to the collector's signal file (TOML) | unset (WARN) |
 
 `doctor` names variables but never prints their values. `doctor --online` is accepted but not
 implemented yet.

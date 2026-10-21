@@ -56,13 +56,13 @@ domain = "example.invalid"
 The first target names its organisation. The second gives only a domain, so the collector must
 match it to an organisation (section 3) or report it as unmatched.
 
-### Example 2 (JSON): a file name, org-only and domain-only targets
+### Example 2 (JSON): a second keyword, org-only and domain-only targets
 
 ```json
 {
   "schema": 1,
   "name": "example-tool-config",
-  "filenames": ["example-tool.yaml"],
+  "keywords": ["example-tool"],
   "min_repo_age_days": 30,
   "targets": [
     {"org": "example-labs"},
@@ -77,12 +77,11 @@ match it to an organisation (section 3) or report it as unmatched.
 |---|---|---|
 | `schema` | yes | must be `1` |
 | `name` | yes | a label for the signal: lowercase letters, digits and `-`, up to 48 characters |
-| `keywords` | one of the two | terms matched against repository names, descriptions and topics |
-| `filenames` | one of the two | exact file names looked for inside repositories (code search) |
+| `keywords` | yes | terms matched against repository names, descriptions and topics |
 | `language` | no | keep only repositories whose primary language matches |
-| `pushed_within_days` | no | keep only repositories pushed within this many days (1 to 730) |
+| `pushed_within_days` | no | keep only repositories pushed within this many days (1 to 730); defaults to 365 |
 | `min_repo_age_days` | no | keep only repositories at least this old (0 to 3650) |
-| `targets` | yes | the companies: each entry has a `domain`, an `org`, or both |
+| `targets` | yes | the companies: each entry has a `domain`, an `org`, or both, and optionally `confirm_org = true` (section 3) |
 
 ### Validation rules
 
@@ -93,10 +92,10 @@ The parser is strict. Anything it does not recognise is an error, not something 
   can quote file content.
 - Unknown keys are refused (`signal_unknown_key`). Only key **names** may appear in an error,
   never a value.
-- `keywords` and `filenames` are lists of strings, 2 to 64 characters each. A keyword uses only
-  letters, digits and `. _ + -`. A file name uses the same characters and no `/`. No spaces,
-  quotes, colons or other characters that could add a search qualifier. A term therefore cannot
-  change the query beyond the term itself.
+- `keywords` is a list of strings, 2 to 64 characters each. A keyword uses only letters, digits
+  and `. _ + -`. No spaces, quotes, colons or other characters that could add a search
+  qualifier. A term therefore cannot change the query beyond the term itself. File-name signals
+  (code search) are not part of v1 (decided).
 - Duplicate terms (ignoring case) and duplicate targets are refused.
 - A `domain` must pass the same domain check as `Evidence.company_domain`. An `org` must look
   like a GitHub organisation login: letters, digits and single hyphens, up to 39 characters.
@@ -106,11 +105,11 @@ The parser is strict. Anything it does not recognise is an error, not something 
 
 ### Hard caps
 
-These are proposed v1 values. They are listed again under Decisions needed.
+These are the decided v1 values.
 
 | cap | value |
 |---|---|
-| search terms (`keywords` plus `filenames`) | at most 5 |
+| search terms (`keywords`) | at most 5 |
 | targets per file | at most 50 |
 | repositories considered per target and term | at most 5 (first page only) |
 | Evidence items per target | at most 10 |
@@ -140,7 +139,8 @@ wrong company.
    candidate is reported as `ambiguous`, with the candidate org logins listed (org logins are
    organisation-level names, not individuals). **Neither is included in the output.**
 5. If a user-supplied org's website is on a different domain from the target, the target is
-   still used, but the report flags it as `website_mismatch` so you can check it.
+   **excluded** and reported as `website_mismatch`, until you set `confirm_org = true` on that
+   target to say the org is right (decided).
 
 **Confidence** is a label, not a number:
 
@@ -173,22 +173,20 @@ which the collector **never requests**. Links to it are only copied into Evidenc
 | organisation profile | `GET /orgs/{org}` | login, display name, website (`blog`), verified flag (`is_verified`), `html_url`, `type` |
 | candidate organisations | `GET /search/users?q=<name>+type:org` | method B candidates only; counts against the search limit |
 | repositories matching a keyword | `GET /search/repositories?q=<term>+org:<org>+fork:false+archived:false[+language:<l>][+pushed:>=<date>][+created:<=<date>]&per_page=<n>` | returns `full_name`, `html_url`, `description`, `language`, `pushed_at`, `created_at`, `fork`, `archived`, `topics`, `owner.type`; `total_count`; `incomplete_results` |
-| files with a given name | `GET /search/code?q=filename:<name>+org:<org>&per_page=<n>` | code search; likely requires a token and has its own, stricter limit |
 | one repository (re-check) | `GET /repos/{owner}/{repo}` | only to confirm a repository still exists; not needed in v1 if search results carry `fork` and `archived` |
 | remaining limits | `GET /rate_limit` | for a future `doctor --online` only; v1 `doctor` stays offline |
 
 Request headers: `Accept` for the GitHub JSON media type, an API version header if GitHub
 requires one, `User-Agent` (see section 7) and, only when a token is set,
-`Authorization: Bearer <token>`. The collector never asks for the text-match media type, so code
-search returns no code fragments.
+`Authorization: Bearer <token>`. The collector never asks for the text-match media type. v1 makes
+no code search requests (decided).
 
 ### Rate limits (unverified figures)
 
 - **Core REST limit:** roughly 60 requests an hour without a token and about 5,000 an hour with
   one.
 - **Search has its own, much lower limit:** roughly 10 requests a minute without a token and
-  about 30 a minute with one. Code search may be lower still and may require a token. Search is
-  the bottleneck: 50 targets with 5 terms could need 250 searches, which is far over a
+  about 30 a minute with one. Search is the bottleneck: 50 targets with 5 terms could need 250 searches, which is far over a
   per-minute limit.
 - **Secondary rate limits:** too many requests at once or too fast can be refused with 403 or
   429 even when the main limit has room. A `Retry-After` header may be sent.
@@ -215,7 +213,8 @@ against the core limit. Two things to note:
 - `http.HttpClient` currently treats **every** 3xx, including 304, as a refused redirect
   (`redirect_refused`). Conditional requests would need a small change: return 304 as a normal
   status with no body, keep every other 3xx refused, and add tests.
-- Conditional requests only help with a cache (section 6). Without one, v1 skips them.
+- Conditional requests only help with a cache (section 6). v1 has no cache (decided), so v1
+  skips them.
 
 ### Errors: surface a code, never sleep or retry
 
@@ -254,7 +253,7 @@ already collected, marked partial (section 8).
 Each accepted hit becomes one `models.Evidence(company_domain, summary, url, kind)`:
 
 - `company_domain` is the target's domain.
-- `url` is the `html_url` GitHub returned for the repository or file. It is kept only if it is
+- `url` is the `html_url` GitHub returned for the repository. It is kept only if it is
   https and on the GitHub web host. Otherwise the hit is dropped and the report counts it.
 - `kind` is one of the kinds below.
 - `summary` is one short factual sentence built from a **fixed template**.
@@ -265,7 +264,6 @@ Each accepted hit becomes one `models.Evidence(company_domain, summary, url, kin
 |---|---|---|
 | `repo` | the repository's name or description matches a keyword | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
 | `topic` | the repository is tagged with a topic equal to a keyword | `The public repository {full_name} is tagged with the topic {term}{language_clause}, last pushed on {pushed_date}.` |
-| `file` | code search finds a file with the given name | `The public repository {full_name} contains a file named {filename}, last pushed on {pushed_date}.` |
 
 `{language_clause}` is either empty or ` and its primary language on GitHub is {language}`.
 `{pushed_date}` is the `pushed_at` date as `YYYY-MM-DD`. A rendered example, with synthetic
@@ -276,8 +274,8 @@ values:
 ### Rules for every summary
 
 - Only fields GitHub returned are used: the repository full name, the term that matched, the
-  primary language and the last push date. The repository description is excluded in v1 (see
-  Decisions needed). If it is ever allowed, it is quoted, truncated to 80 characters, and
+  primary language and the last push date. The repository description is excluded in v1
+  (decided). If it is ever allowed, it is quoted, truncated to 80 characters, and
   dropped when it contains a URL, an `@` or a control character.
 - Never free-form text from READMEs, issues, pull requests, commits, code or wikis.
 - Never a claim about the company beyond what the repository shows. The summary names the
@@ -324,7 +322,7 @@ response is parsed, so excluded data never reaches Evidence, the report or a cac
 **What is stored:** nothing on disk by default. Evidence lives in memory and is passed to the
 drafter's `evidence_lookup`.
 
-An **optional cache**, if v1 ships one (see Decisions needed), would:
+**v1 ships no cache (decided).** A cache, if one is added after v1, would:
 
 - live in a directory named by a new setting, created with mode 0700, with files at mode 0600;
 - hold only allowlisted fields (org login, repository full name, `html_url`, language,
@@ -347,9 +345,8 @@ This is plain language, not legal advice.
 - It honours rate limits: it plans requests up front, stops at the first rate-limit response,
   and never retries aggressively. In v1 it never retries at all.
 - It identifies itself with a `User-Agent` that names the project and points to a project URL
-  that holds no personal contact details, for example
-  `repo-signals/<version> (+https://example.com/repo-signals)`. The real URL is a decision for
-  John.
+  that holds no personal contact details: `repo-signals/<version> (+https://honeycombagents.ai)`
+  (decided).
 - It collects organisation-level facts only (section 6), and a domain on your suppression list
   is never looked up.
 
@@ -379,7 +376,7 @@ The README must say, in plain words:
 | ambiguous org | target excluded | `example.com: ambiguous (3 candidate orgs: example-org, example-labs, example-hq; add org = "..." to confirm)` |
 | unmatched company | target excluded | `example.invalid: unmatched (no organisation passed the domain check)` |
 | user-supplied org not found | target excluded | `org_not_found`; `example.com: org example-org not found` |
-| website on another domain | target kept and flagged | `example.com -> example-org (user, website_mismatch)` |
+| website on another domain | target excluded until `confirm_org = true` is set on it | `example.com -> example-org (user, website_mismatch: excluded; set confirm_org = true to include)` |
 | a repository disappeared | hit skipped | `repo_not_found`; `example.com: 1 repository no longer available` |
 | a repository moved (301) | hit skipped; the redirect is never followed | `repo_moved`; `example.com: 1 repository moved` |
 | fork or archived repository | excluded by default (query qualifiers, then rechecked on the result fields) | `example.com: excluded 2 forks, 1 archived` |
@@ -451,7 +448,7 @@ Mutants the build's harness must catch (outside the repository, as for the earli
 22. text-match fragments requested or kept
 23. the plan check skipped (a live run starts despite `budget_too_small`)
 
-## 10. PR split and decisions needed
+## 10. PR split and decisions
 
 ### PR split (dry run first)
 
@@ -469,30 +466,23 @@ Each PR is offline-tested with a fake transport and keeps dry run as the default
    suggestions and confidence labels.
 5. **Collector orchestration.** Targets to Evidence, plan-before-spend refusal, partial results,
    and handing Evidence to the drafter's `evidence_lookup`.
-6. **Optional: cache and `cache purge`,** plus the `HttpClient` change for 304, only if the cache
-   is approved.
-7. **Live switch.** Only after the unverified details are checked against GitHub's
+6. **Live switch.** Only after the unverified details are checked against GitHub's
    documentation, and with John's sign-off.
 
-### Decisions needed from John
+### Decided (John)
 
-1. **Org matching default:** user-supplied orgs only, or also verified-domain matching (B) for
-   domain-only targets? The recommendation is A plus B, with name search used only for
-   suggestions.
-2. **Is `website-only` ever included,** or always only reported? The recommendation is report
-   only.
-3. **Cache in v1:** none (recommended for v1), or the optional cache in section 6 with its expiry
-   and size cap?
-4. **Search term limits:** 5 terms and 50 targets per file, 5 repositories per target and term,
-   10 Evidence items per target. Higher or lower?
-5. **Repository description in summaries:** excluded (recommended), or allowed as a quoted,
-   truncated, filtered field?
-6. **The `User-Agent` string,** including the real project URL (no personal contact details).
-7. **Plan-before-spend:** refuse a live run whose plan exceeds the budget or the search limit
-   (recommended), or run until the limit and return partial results?
-8. **Token requirement for code search:** keep `filenames` (which probably needs a token), or drop
-   file-name signals from v1 so the collector works without a token?
-9. **The signal file setting:** the name `REPO_SIGNALS_SIGNAL_FILE`, and whether more than one
-   signal file per run is allowed. The recommendation is one.
-10. **Default windows:** whether `pushed_within_days` should default to a value (for example
-    365) so stale repositories are not used as evidence.
+1. **Org matching:** user-supplied org (A) plus verified-domain matching (B). Name search is used
+   only for suggestions and never produces Evidence.
+2. **Website mismatch:** a user-named org whose website is on a different domain is excluded
+   until the target sets `confirm_org = true`.
+3. **`website-only`** matches are report-only.
+4. **No cache in v1.**
+5. **Limits:** 5 terms and 50 targets per file, 5 repositories per target and term, 10 Evidence
+   items per target.
+6. **Repository description:** excluded from summaries.
+7. **`User-Agent`:** `repo-signals/<version> (+https://honeycombagents.ai)`.
+8. **Plan-before-spend:** a live run whose plan exceeds the budget or the search limit is refused
+   before any request.
+9. **No file-name signals in v1:** no code search, so no `file` kind.
+10. **Signal file setting:** `REPO_SIGNALS_SIGNAL_FILE`, one file per run.
+11. **Default window:** `pushed_within_days` defaults to 365.

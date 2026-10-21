@@ -14,6 +14,7 @@
                                refuses without them)
     REPO_SIGNALS_SUPPRESSION_FILE
                                path to a suppression list: one email or domain per line
+    REPO_SIGNALS_SIGNAL_FILE   path to the signal definition (TOML) for the collector
 
 An empty variable counts as unset. Surrounding whitespace is an error, not
 something to trim. Dry run is always on: live mode does not exist yet.
@@ -38,6 +39,7 @@ OPTOUT_TEXT = "REPO_SIGNALS_OPTOUT_TEXT"
 SENDER_VARS = (SENDER_NAME, SENDER_ROLE, ORG_NAME, POSTAL_ADDRESS, OPTOUT_TEXT)
 MULTILINE_SENDER_VARS = (POSTAL_ADDRESS, OPTOUT_TEXT)
 SUPPRESSION_FILE = "REPO_SIGNALS_SUPPRESSION_FILE"
+SIGNAL_FILE = "REPO_SIGNALS_SIGNAL_FILE"
 DEFAULT_PROVIDER = "fake"
 
 _PROVIDER_RE = re.compile(r"[a-z][a-z0-9_-]{0,31}")
@@ -113,6 +115,11 @@ def parse_google_credentials(environ) -> str | None:
 def parse_suppression_file(environ) -> str | None:
     return _parse_path(environ, SUPPRESSION_FILE,
                        "must be a path to the suppression list file, not its contents")
+
+
+def parse_signal_file(environ) -> str | None:
+    return _parse_path(environ, SIGNAL_FILE,
+                       "must be a path to the signal file, not its contents")
 
 
 def parse_sender_var(environ, var) -> str | None:
