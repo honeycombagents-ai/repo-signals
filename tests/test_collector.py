@@ -439,7 +439,7 @@ class Collect(TmpDir):
         r = subprocess.run([sys.executable, "-m", "repo_signals", "collect"], env=base,
                            capture_output=True, text=True)
         self.assertEqual((r.returncode, r.stdout, r.stderr),
-                         (2, "", "live collection is not implemented yet\n"))
+                         (2, "", "usage: repo-signals collect --dry-run | --live\n"))
         r = subprocess.run([sys.executable, "-m", "repo_signals", "collect", "--dry-run"],
                            env=base, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -450,8 +450,9 @@ class Collect(TmpDir):
         with mock.patch.object(dry_run, "run", return_value=0) as run:
             self.assertEqual(main(["collect", "--dry-run"]), 0)
             run.assert_called_once_with(dry_run=True)
-            main(["collect"])
-            run.assert_called_with(dry_run=False)
+            with mock.patch("sys.stderr", io.StringIO()):
+                self.assertEqual(main(["collect"]), 2)
+            run.assert_called_once_with(dry_run=True)  # bare "collect" never reaches it
 
 
 # ---- doctor ----
@@ -511,11 +512,13 @@ class NoNetwork(unittest.TestCase):
         files = sorted((ROOT / "src/repo_signals/collector").glob("*.py"))
         self.assertEqual([f.name for f in files],
                          ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
-                          "github_api.py", "github_fields.py", "matching.py", "orchestrate.py",
-                          "plan.py", "signal.py"])
+                          "github_api.py", "github_fields.py", "live.py", "matching.py",
+                          "orchestrate.py", "plan.py", "signal.py"])
         # github_api.py is the one collector module allowed to use http.HttpClient; it is
         # tested on its own (test_collector_client.py) and is unreachable from the CLI.
-        files = [f for f in files if f.name != "github_api.py"]
+        # live.py is the CLI's live path: it builds the client after a typed confirmation and is
+        # tested on its own (test_collector_live.py).
+        files = [f for f in files if f.name not in ("github_api.py", "live.py")]
         for f in files:
             for node in ast.walk(ast.parse(f.read_text())):
                 with self.subTest(file=f.name, line=getattr(node, "lineno", 0)):

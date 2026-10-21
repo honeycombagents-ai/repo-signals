@@ -363,7 +363,7 @@ class Source(unittest.TestCase):
                            env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(_src.SRC),
                                 "PYTHONDONTWRITEBYTECODE": "1"},
                            capture_output=True, text=True)
-        self.assertEqual((r.returncode, r.stderr), (2, "live collection is not implemented yet\n"))
+        self.assertEqual((r.returncode, r.stderr), (2, "usage: repo-signals collect --dry-run | --live\n"))
 
     def test_no_http_machinery(self):
         text = (ROOT / "src/repo_signals/collector/orchestrate.py").read_text()

@@ -15,10 +15,13 @@
     REPO_SIGNALS_SUPPRESSION_FILE
                                path to a suppression list: one email or domain per line
     REPO_SIGNALS_SIGNAL_FILE   path to the signal definition (TOML) for the collector
+    REPO_SIGNALS_DRY_RUN       "true" (the default) or exactly "false". Dry run is on unless
+                               this is "false"; any other value is an error.
 
 An empty variable counts as unset. Surrounding whitespace is an error, not
-something to trim. Dry run is always on: live mode does not exist yet.
-Errors name the variable, never its value.
+something to trim. Dry run is on by default. Turning it off only allows the
+live commands (probe-org, collect --live); collect --live still asks for
+confirmation every time. Errors name the variable, never its value.
 """
 import os
 import re
@@ -40,6 +43,7 @@ SENDER_VARS = (SENDER_NAME, SENDER_ROLE, ORG_NAME, POSTAL_ADDRESS, OPTOUT_TEXT)
 MULTILINE_SENDER_VARS = (POSTAL_ADDRESS, OPTOUT_TEXT)
 SUPPRESSION_FILE = "REPO_SIGNALS_SUPPRESSION_FILE"
 SIGNAL_FILE = "REPO_SIGNALS_SIGNAL_FILE"
+DRY_RUN = "REPO_SIGNALS_DRY_RUN"
 DEFAULT_PROVIDER = "fake"
 
 _PROVIDER_RE = re.compile(r"[a-z][a-z0-9_-]{0,31}")
@@ -117,6 +121,16 @@ def parse_suppression_file(environ) -> str | None:
                        "must be a path to the suppression list file, not its contents")
 
 
+def parse_dry_run(environ) -> bool:
+    """True unless REPO_SIGNALS_DRY_RUN is exactly "false". Only "true" and "false" are valid."""
+    raw = _raw(environ, DRY_RUN)
+    if raw is None or raw == "true":
+        return True
+    if raw == "false":
+        return False
+    raise ConfigError(DRY_RUN, 'must be "true" or "false"')
+
+
 def parse_signal_file(environ) -> str | None:
     return _parse_path(environ, SIGNAL_FILE,
                        "must be a path to the signal file, not its contents")
@@ -167,4 +181,5 @@ def load_settings(environ=None) -> Settings:
         sheet_id=parse_sheet_id(environ),
         github_token=parse_github_token(environ),
         google_credentials=parse_google_credentials(environ),
+        dry_run=parse_dry_run(environ),
     )

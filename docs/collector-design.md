@@ -1,8 +1,10 @@
 # Design: the GitHub signal collector
 
-Status: **design only**. Nothing in this document is built yet. It describes what a build would
-do, so the decisions can be made before any code is written. Every GitHub endpoint, field and
-limit named here is unverified general knowledge (see section 4).
+Status: **built, live behind a gate.** PRs 1 to 6 in section 10 are built. Live collection
+(`repo-signals collect --live`) runs only with dry run off, a valid signal file and plan, a
+terminal, and a typed "yes" (see [live-collection.md](live-collection.md)). Every GitHub endpoint,
+field and limit named here is still unverified general knowledge (see section 4): run
+`repo-signals probe-org` first.
 
 ## 1. Purpose and scope
 
@@ -158,8 +160,9 @@ states only what the repository shows. `Evidence` itself is unchanged.
 
 ## 4. GitHub access
 
-**Status:** the client exists (`collector/github_api.py`, see [github-client.md](github-client.md))
-but is unreachable from the command line, and it is a dry run by default.
+**Status:** the client exists (`collector/github_api.py`, see [github-client.md](github-client.md)).
+It is reachable only through `repo-signals probe-org` (one request) and `repo-signals collect
+--live` (after a typed confirmation), and only when `REPO_SIGNALS_DRY_RUN=false`.
 
 ### Endpoints
 
@@ -469,8 +472,9 @@ Each PR is offline-tested with a fake transport and keeps dry run as the default
    suggestions and confidence labels.
 5. **Collector orchestration.** Targets to Evidence, plan-before-spend refusal, partial results,
    and handing Evidence to the drafter's `evidence_lookup`.
-6. **Live switch.** Only after the unverified details are checked against GitHub's
-   documentation, and with John's sign-off.
+6. **Live switch.** `probe-org` (one request) and the gated `collect --live`
+   (see [live-collection.md](live-collection.md)). Before the first real run, check the
+   unverified details against GitHub's documentation, with John's sign-off.
 
 ### Decided (John)
 

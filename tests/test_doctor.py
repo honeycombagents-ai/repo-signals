@@ -96,7 +96,8 @@ class PassPaths(unittest.TestCase):
                          "PASS drafting templates present and valid",
                          "PASS REPO_SIGNALS_SIGNAL_FILE file parses: 1 term(s), 1 target(s)"):
             self.assertIn(expected, out)
-        self.assertIn("doctor: 20 pass, 0 warn, 0 fail", out)
+        self.assertIn("PASS live collection is not armed", out)
+        self.assertIn("doctor: 21 pass, 0 warn, 0 fail", out)
 
     def test_explicit_provider_and_max_calls(self):
         code, out = run({**FULL, config.PROVIDER: "fake", config.MAX_CALLS: "500"})
@@ -174,8 +175,24 @@ class FailPaths(unittest.TestCase):
         self.assertFails({**FULL, config.SHEET_ID: "short"}, "REPO_SIGNALS_SHEET_ID is not")
         self.assertFails({**FULL, config.GITHUB_TOKEN: "short"}, "REPO_SIGNALS_GITHUB_TOKEN is not")
 
-    def test_dry_run_off(self):
-        self.assertFails(dict(FULL), "dry run is off", settings=Settings(dry_run=False))
+    def test_dry_run_off_warns_and_arms(self):
+        code, out = run(dict(FULL), settings=Settings(dry_run=False))
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARN dry run is off: probe-org and collect --live can make GitHub "
+                      "requests", out)
+        self.assertIn("WARN live collection is ARMED (dry run is off and "
+                      "REPO_SIGNALS_SIGNAL_FILE is set)", out)
+
+    def test_dry_run_from_the_environment(self):
+        code, out = run({**FULL, config.DRY_RUN: "false"})
+        self.assertIn("WARN live collection is ARMED", out)
+        code, out = run({config.DRY_RUN: "false"})
+        self.assertIn("PASS live collection is not armed", out)
+        self.assertIn("WARN dry run is off", out)
+        code, out = run({**FULL, config.DRY_RUN: "SENTINELNO"})
+        self.assertEqual(code, 1)
+        self.assertIn('FAIL REPO_SIGNALS_DRY_RUN must be "true" or "false"', out)
+        self.assertNotIn("SENTINEL", out)
 
 
 class Online(unittest.TestCase):

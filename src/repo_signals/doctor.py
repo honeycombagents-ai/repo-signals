@@ -76,10 +76,21 @@ def check_max_calls(environ):
                    f"{config.DEFAULT_MAX_CALLS}")]
 
 
-def check_dry_run(settings):
+def check_dry_run(settings, problem=None):
+    if problem:
+        return [(FAIL, problem)]
     if settings.dry_run:
         return [(PASS, "dry run is on: no paid calls, nothing written")]
-    return [(FAIL, "dry run is off, and live mode is not implemented yet")]
+    return [(WARN, "dry run is off: probe-org and collect --live can make GitHub requests")]
+
+
+def check_live_armed(environ, settings):
+    """Armed means dry run is off and a signal file is set. Names only, never values."""
+    if not settings.dry_run and _is_set(environ, config.SIGNAL_FILE):
+        return [(WARN, f"live collection is ARMED (dry run is off and {config.SIGNAL_FILE} is "
+                       "set); collect --live still asks for confirmation")]
+    return [(PASS, f"live collection is not armed (needs dry run off and {config.SIGNAL_FILE} "
+                   "set)")]
 
 
 def check_optional(environ, var, parse, missing_hint):
@@ -192,14 +203,20 @@ def check_signal_file(environ):
 
 
 def run_checks(environ, registry, settings=None, version_info=None, which=None):
-    settings = settings if settings is not None else config.Settings()
+    dry_run_problem = None
+    if settings is None:
+        try:
+            settings = config.Settings(dry_run=config.parse_dry_run(environ))
+        except config.ConfigError as e:
+            settings, dry_run_problem = config.Settings(), str(e)
     version_info = version_info if version_info is not None else sys.version_info
     which = which if which is not None else shutil.which
     return [
         *check_python(version_info),
         *check_provider(environ, registry, settings),
         *check_max_calls(environ),
-        *check_dry_run(settings),
+        *check_dry_run(settings, dry_run_problem),
+        *check_live_armed(environ, settings),
         *check_optional(environ, config.SHEET_ID, config.parse_sheet_id,
                         "needed before results can be written to a Sheet"),
         *check_optional(environ, config.GITHUB_TOKEN, config.parse_github_token,
