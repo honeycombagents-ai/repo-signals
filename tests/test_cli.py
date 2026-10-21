@@ -31,7 +31,7 @@ class ExitCodes(unittest.TestCase):
         self.assertIn("2 warn, 0 fail", out)
 
     def test_doctor_failure_exits_1(self):
-        for env in ({"REPO_SIGNALS_MAX_CALLS": "0"}, {"REPO_SIGNALS_PROVIDER": "apollo"}):
+        for env in ({"REPO_SIGNALS_MAX_CALLS": "0"}, {"REPO_SIGNALS_PROVIDER": "nosuch"}):
             with self.subTest(env=env):
                 code, out, _ = cli("doctor", **env)
                 self.assertEqual(code, 1, out)

@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 import _src  # noqa: F401
 from repo_signals.budget import BudgetExceeded, CallBudget
@@ -51,17 +52,24 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("registered: stub", msg)
         self.assertNotIn("nosuch", msg)
 
-    def test_planned_names_are_reserved_not_implemented(self):
-        self.assertEqual(PLANNED, ("apollo",))
-        for name in PLANNED:
-            with self.subTest(name=name):
-                self.assertNotIn(name, list_providers())
-                with self.assertRaises(UnknownProviderError) as cm:
-                    get(name)
-                self.assertIn("not implemented yet", str(cm.exception))
+    def test_nothing_planned_now(self):
+        self.assertEqual(PLANNED, ())
+        with self.assertRaises(UnknownProviderError) as cm:
+            get("nosuch")
+        self.assertNotIn("planned", str(cm.exception))
 
-    def test_default_registry_has_fake_and_hunter(self):
-        self.assertEqual(list_providers(), ("fake", "hunter"))
+    def test_planned_names_are_reserved_not_implemented(self):
+        with mock.patch("repo_signals.providers.registry.PLANNED", ("zeta",)):
+            self.assertNotIn("zeta", list_providers())
+            with self.assertRaises(UnknownProviderError) as cm:
+                get("zeta")
+            self.assertIn("not implemented yet", str(cm.exception))
+            with self.assertRaises(UnknownProviderError) as cm:
+                get("nosuch")
+            self.assertIn("planned, not implemented yet: zeta", str(cm.exception))
+
+    def test_default_registry_has_fake_hunter_apollo(self):
+        self.assertEqual(list_providers(), ("apollo", "fake", "hunter"))
         self.assertIsInstance(get("fake"), FakeProvider)
 
     def test_rejects_malformed_providers(self):

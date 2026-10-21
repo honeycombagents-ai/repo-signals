@@ -1,8 +1,9 @@
 # Writing a people-provider adapter
 
 A people provider takes a company domain and returns people at that company. Repo Signals ships
-two built-in providers: `fake`, which returns synthetic people and makes no network calls, and
-`hunter` (dry run by default, see [hunter.md](hunter.md)). Planned, not implemented yet: `apollo`.
+three built-in providers: `fake`, which returns synthetic people and makes no network calls,
+`hunter` (dry run by default, see [hunter.md](hunter.md)) and `apollo` (dry run by default,
+search only, see [apollo.md](apollo.md)).
 
 Any other source can be added as a custom adapter.
 

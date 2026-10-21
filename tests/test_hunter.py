@@ -18,8 +18,7 @@ from repo_signals.config import Settings
 from repo_signals.http import HttpClient, RawResponse
 from repo_signals.models import Person
 from repo_signals.providers import (PLANNED, PeopleProvider, ProviderError, Registry,
-                                    UnknownProviderError, find_people_within, get,
-                                    list_providers)
+                                    find_people_within, get, list_providers)
 from repo_signals.providers import hunter
 from repo_signals.providers.fake import FakeProvider
 from repo_signals.providers.hunter import API_KEY_ENV, DRY_RUN_NOTICE, HunterProvider
@@ -422,10 +421,7 @@ class RegistryAndDoctor(unittest.TestCase):
         self.assertTrue(p.dry_run)
         self.assertIsNone(p._budget)
         self.assertEqual((p.name, p.required_env), ("hunter", ("HUNTER_API_KEY",)))
-        self.assertEqual(PLANNED, ("apollo",))
-        with self.assertRaises(UnknownProviderError) as cm:
-            get("apollo")
-        self.assertIn("not implemented yet", str(cm.exception))
+        self.assertNotIn("hunter", PLANNED)
 
     def run_doctor(self, env, provider=None, **kw):
         reg = Registry()
@@ -504,7 +500,7 @@ class Source(unittest.TestCase):
                 r = subprocess.run([sys.executable, "-c", code, str(_src.SRC)],
                                    env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
                                    capture_output=True, text=True)
-                self.assertEqual(r.stdout.strip(), "('fake', 'hunter')", r.stderr)
+                self.assertEqual(r.stdout.strip(), "('apollo', 'fake', 'hunter')", r.stderr)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""A small, strict HTTPS JSON client built on the standard library.
+"""A small, strict HTTPS JSON client built on the standard library: GET and POST.
 
 - https only, and only to hosts in the allowlist given at construction;
 - redirects are never followed (a 3xx is an error);
@@ -26,6 +26,7 @@ from .providers.base import ProviderError
 MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_TIMEOUT = 10.0
 MAX_TIMEOUT = 120.0
+MAX_REQUEST_BYTES = 64 * 1024
 _CHUNK = 64 * 1024
 
 
@@ -36,8 +37,10 @@ class RawResponse(NamedTuple):
 
 
 class Transport(Protocol):
-    def __call__(self, url: str, headers: dict, timeout: float,
-                 max_bytes: int) -> RawResponse:
+    """GET calls pass four arguments; POST calls add ``method="POST"`` and ``body``."""
+
+    def __call__(self, url: str, headers: dict, timeout: float, max_bytes: int,
+                 method: str = "GET", body: bytes | None = None) -> RawResponse:
         ...
 
 
@@ -101,11 +104,13 @@ class UrllibTransport:
         self.proxies = dict(proxies) if proxies else {}
         self._opener = opener if opener is not None else build_opener(self.proxies)
 
-    def __call__(self, url, headers, timeout, max_bytes):
+    def __call__(self, url, headers, timeout, max_bytes, method="GET", body=None):
         if not url.startswith("https://"):
             raise ProviderError("insecure_scheme")
+        if method not in ("GET", "POST") or (body is not None and not isinstance(body, bytes)):
+            raise ProviderError("bad_method")
         deadline = time.monotonic() + timeout
-        req = urllib.request.Request(url, headers=headers, method="GET")
+        req = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:
             try:
                 resp = self._opener.open(req, timeout=timeout)
@@ -169,27 +174,18 @@ class HttpClient:
         if "@" in parts.netloc or port not in (None, 443) or parts.query or parts.fragment:
             raise ProviderError("bad_url")
 
-    def get_json(self, url, params=None, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
-        """GET ``url`` with ``params`` as the query string; return ``(status, parsed JSON)``.
-
-        A 2xx body that is not JSON raises ``malformed_json``. A non-2xx body that is not
-        JSON gives ``data`` None, so the caller can still map the status.
-        """
-        timeout = _check_timeout(timeout)
-        self._check_url(url)
-        params = {} if params is None else params
+    def _check_headers(self, headers):
         headers = {} if headers is None else headers
-        if not isinstance(params, dict) or not all(
-                isinstance(k, str) and isinstance(v, (str, int)) and not isinstance(v, bool)
-                for k, v in params.items()):
-            raise ProviderError("bad_params")
         if not isinstance(headers, dict) or not all(
                 _clean(k) and isinstance(v, str) and "\r" not in v and "\n" not in v
                 for k, v in headers.items()):
             raise ProviderError("bad_header")
-        full = url + ("?" + urlencode(params) if params else "")
+        return dict(headers)
+
+    def _send(self, url, headers, timeout, body=None):
+        kwargs = {} if body is None else {"method": "POST", "body": body}
         try:
-            raw = self._transport(full, dict(headers), timeout, self.max_body_bytes)
+            raw = self._transport(url, headers, timeout, self.max_body_bytes, **kwargs)
         except ProviderError:
             raise
         except Exception:  # a transport must not leak its exception, which may hold the URL
@@ -209,3 +205,43 @@ class HttpClient:
                 raise ProviderError("malformed_json") from None
             data = None
         return JsonResponse(raw.status, data, hdrs)
+
+    def get_json(self, url, params=None, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
+        """GET ``url`` with ``params`` as the query string; return ``(status, parsed JSON)``.
+
+        A 2xx body that is not JSON raises ``malformed_json``. A non-2xx body that is not
+        JSON gives ``data`` None, so the caller can still map the status.
+        """
+        timeout = _check_timeout(timeout)
+        self._check_url(url)
+        params = {} if params is None else params
+        if not isinstance(params, dict) or not all(
+                isinstance(k, str) and isinstance(v, (str, int)) and not isinstance(v, bool)
+                for k, v in params.items()):
+            raise ProviderError("bad_params")
+        headers = self._check_headers(headers)
+        full = url + ("?" + urlencode(params) if params else "")
+        return self._send(full, headers, timeout)
+
+    def post_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
+        """POST ``payload`` (a dict) as a JSON body; return ``(status, parsed JSON)``.
+
+        Same rules as ``get_json``: https only, allowlisted host, no redirects, body cap,
+        timeout, code-only errors. The URL may not carry a query string. The encoded
+        request body is capped at MAX_REQUEST_BYTES.
+        """
+        timeout = _check_timeout(timeout)
+        self._check_url(url)
+        if not isinstance(payload, dict):
+            raise ProviderError("bad_payload")
+        try:
+            body = json.dumps(payload, separators=(",", ":"), ensure_ascii=True,
+                              allow_nan=False).encode("ascii")
+        except (TypeError, ValueError, RecursionError):
+            raise ProviderError("bad_payload") from None
+        if len(body) > MAX_REQUEST_BYTES:
+            raise ProviderError("payload_too_large")
+        headers = self._check_headers(headers)
+        if not any(k.lower() == "content-type" for k in headers):
+            headers["Content-Type"] = "application/json"
+        return self._send(url, headers, timeout, body)

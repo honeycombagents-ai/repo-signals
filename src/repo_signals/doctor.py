@@ -9,7 +9,7 @@ import sys
 
 from . import config
 from .budget import HARD_MAX_CALLS
-from .providers.registry import PLANNED, UnknownProviderError, default_registry
+from .providers.registry import UnknownProviderError, default_registry, planned_note
 
 PASS, WARN, FAIL = "PASS", "WARN", "FAIL"
 
@@ -34,8 +34,7 @@ def check_provider(environ, registry, settings=None):
         provider = registry.get(name)
     except UnknownProviderError:
         return [(FAIL, f"{config.PROVIDER} does not name a registered provider "
-                       f"(registered: {', '.join(registry.names())}; "
-                       f"planned, not implemented yet: {', '.join(PLANNED)})")]
+                       f"(registered: {', '.join(registry.names())}{planned_note()})")]
     if _is_set(environ, config.PROVIDER):
         lines = [(PASS, f"{config.PROVIDER} names a registered provider")]
     else:

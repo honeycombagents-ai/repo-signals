@@ -25,9 +25,9 @@ class FakeTransport:
         self.responses = list(responses)
         self.calls = []
 
-    def __call__(self, url, headers, timeout, max_bytes):
+    def __call__(self, url, headers, timeout, max_bytes, method="GET", body=None):
         self.calls.append({"url": url, "headers": dict(headers), "timeout": timeout,
-                           "max_bytes": max_bytes})
+                           "max_bytes": max_bytes, "method": method, "body": body})
         r = self.responses.pop(0) if len(self.responses) > 1 else self.responses[0]
         if isinstance(r, BaseException):
             raise r
@@ -201,6 +201,116 @@ class ClientRefusals(LeakFree, unittest.TestCase):
                 HttpClient((HOST,), transport=FakeTransport(ok()), max_body_bytes=cap)
 
 
+class PostJson(LeakFree, unittest.TestCase):
+    PAYLOAD = {"q": ["SENTINELBODY"], "n": 5}
+    HEADERS = {"X-Key": "SENTINELHEADER"}
+
+    def post_raises(self, client, code, url=URL, payload=None):
+        with self.assertRaises(ProviderError) as cm:
+            client.post_json(url, self.PAYLOAD if payload is None else payload, self.HEADERS, 5)
+        self.assertEqual(cm.exception.code, code)
+        self.assertLeakFree(cm.exception)
+        return cm.exception
+
+    def test_sends_json_body_and_returns_status_and_json(self):
+        t = FakeTransport(ok(b'{"people": []}', headers={"Retry-After": "2"}))
+        r = HttpClient((HOST,), transport=t).post_json(URL, {"a": [1, "b"]}, {"X": "y"}, 6)
+        self.assertEqual(tuple(r), (200, {"people": []}))
+        self.assertEqual(r.headers["retry-after"], "2")
+        call = t.calls[0]
+        self.assertEqual((call["url"], call["method"], call["timeout"]), (URL, "POST", 6.0))
+        self.assertEqual(call["body"], b'{"a":[1,"b"]}')
+        self.assertEqual(call["headers"], {"X": "y", "Content-Type": "application/json"})
+        self.assertEqual(call["max_bytes"], MAX_BODY_BYTES)
+
+    def test_keeps_a_given_content_type(self):
+        t = FakeTransport(ok())
+        HttpClient((HOST,), transport=t).post_json(URL, {}, {"content-type": "application/json"})
+        self.assertEqual(t.calls[0]["headers"], {"content-type": "application/json"})
+
+    def test_get_still_sends_no_body(self):
+        t = FakeTransport(ok())
+        HttpClient((HOST,), transport=t).get_json(URL)
+        self.assertEqual((t.calls[0]["method"], t.calls[0]["body"]), ("GET", None))
+
+    def test_refuses_http(self):
+        t = FakeTransport(ok())
+        for url in ("http://api.example.com/x", "ftp://api.example.com/x"):
+            with self.subTest(url=url):
+                self.post_raises(HttpClient((HOST,), transport=t), "insecure_scheme", url)
+        self.assertEqual(t.calls, [])
+
+    def test_refuses_host_outside_allowlist(self):
+        t = FakeTransport(ok())
+        for url in ("https://evil.example.com/SENTINELURLPART", "https://api.example.com.evil/x"):
+            with self.subTest(url=url):
+                self.post_raises(HttpClient((HOST,), transport=t), "host_not_allowed", url)
+        self.assertEqual(t.calls, [])
+
+    def test_refuses_query_in_url(self):
+        t = FakeTransport(ok())
+        self.post_raises(HttpClient((HOST,), transport=t), "bad_url",
+                         URL + "?SENTINELQUERY=1")
+        self.assertEqual(t.calls, [])
+
+    def test_refuses_redirect_without_following(self):
+        for status in (301, 302, 303, 307, 308):
+            with self.subTest(status=status):
+                t = FakeTransport(ok(b"", status=status,
+                                     headers={"Location": "https://api.example.com/next"}))
+                self.post_raises(HttpClient((HOST,), transport=t), "redirect_refused")
+                self.assertEqual(len(t.calls), 1)
+
+    def test_refuses_oversize_body(self):
+        t = FakeTransport(ok(b'"' + b"SENTINELBODY" * 100 + b'"'))
+        self.post_raises(HttpClient((HOST,), transport=t, max_body_bytes=1000),
+                         "response_too_large")
+        t = FakeTransport(ok(b" " * (MAX_BODY_BYTES + 1)))
+        self.post_raises(HttpClient((HOST,), transport=t), "response_too_large")
+
+    def test_malformed_json_on_success(self):
+        for body in (b"", b"{SENTINELBODY", b"\xff"):
+            with self.subTest(body=body):
+                self.post_raises(HttpClient((HOST,), transport=FakeTransport(ok(body))),
+                                 "malformed_json")
+
+    def test_non_2xx_tolerates_non_json(self):
+        t = FakeTransport(ok(b"<html>SENTINELBODY</html>", status=503))
+        self.assertEqual(tuple(HttpClient((HOST,), transport=t).post_json(URL, {})), (503, None))
+
+    def test_bad_and_oversize_payloads(self):
+        t = FakeTransport(ok())
+        c = HttpClient((HOST,), transport=t)
+        for payload in (["SENTINELBODY"], "SENTINELBODY", {"x": float("nan")},
+                        {"x": {"SENTINELBODY"}}, {"x": object()}):
+            with self.subTest(payload=type(payload).__name__):
+                self.post_raises(c, "bad_payload", payload=payload)
+        self.post_raises(c, "payload_too_large",
+                         payload={"x": "SENTINELBODY" * (http.MAX_REQUEST_BYTES // 10)})
+        self.assertEqual(t.calls, [])
+
+    def test_bad_headers_and_timeout(self):
+        t = FakeTransport(ok())
+        c = HttpClient((HOST,), transport=t)
+        with self.assertRaises(ProviderError) as cm:
+            c.post_json(URL, {}, {"X": "a\nSENTINELHEADER"}, 5)
+        self.assertEqual(cm.exception.code, "bad_header")
+        self.assertLeakFree(cm.exception)
+        for bad in (None, 0, 121, True):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                c.post_json(URL, {}, None, bad)
+        self.assertEqual(t.calls, [])
+
+    def test_transport_exceptions_never_leak(self):
+        msg = f"failed {URL} SENTINELHEADER SENTINELBODY SENTINELURLPART"
+        for exc in (OSError(msg), ValueError(msg), RuntimeError(msg)):
+            with self.subTest(exc=type(exc).__name__):
+                e = self.post_raises(HttpClient((HOST,), transport=FakeTransport(exc)),
+                                     "network_error")
+                self.assertIsNone(e.__cause__)
+                self.assertTrue(e.__suppress_context__)
+
+
 # ---- UrllibTransport, with a fake opener or a fake HTTPS handler (no sockets) ----
 
 class FakeResp:
@@ -251,6 +361,22 @@ class TransportTests(LeakFree, unittest.TestCase):
         r = UrllibTransport(opener=FakeOpener(resp))(URL, {}, 4.0, 1000)
         self.assertEqual(len(r.body), 1001)
         self.assertLessEqual(sum(resp.read_sizes), 1001)
+
+    def test_post_passes_method_and_body(self):
+        o = FakeOpener(FakeResp(200, b'{"a": 1}'))
+        r = UrllibTransport(opener=o)(URL, {"X-Key": "k"}, 4.0, 100, method="POST",
+                                      body=b'{"q":1}')
+        self.assertEqual(r.status, 200)
+        req, _ = o.requests[0]
+        self.assertEqual((req.get_method(), req.data), ("POST", b'{"q":1}'))
+
+    def test_refuses_other_methods_and_bodies(self):
+        o = FakeOpener(FakeResp())
+        for kw in ({"method": "PUT"}, {"method": "DELETE"}, {"method": "POST", "body": "str"}):
+            with self.subTest(kw=kw), self.assertRaises(ProviderError) as cm:
+                UrllibTransport(opener=o)(URL, {}, 4.0, 100, **kw)
+            self.assertEqual(cm.exception.code, "bad_method")
+        self.assertEqual(o.requests, [])
 
     def test_refuses_http_itself(self):
         o = FakeOpener(FakeResp())
@@ -332,6 +458,24 @@ class TransportTests(LeakFree, unittest.TestCase):
             HttpClient((HOST,), transport=t).get_json(URL)
         self.assertEqual(cm.exception.code, "redirect_refused")
         self.assertEqual(seen, [URL, URL])
+
+    def test_real_urllib_stack_does_not_follow_post_redirect(self):
+        seen = []
+
+        class FakeHTTPS(urllib.request.HTTPSHandler):
+            def https_open(self, req):
+                seen.append((req.get_method(), req.full_url, req.data))
+                hdrs = email.message.Message()
+                hdrs["Location"] = "https://api.example.com/elsewhere"
+                resp = urllib.response.addinfourl(io.BytesIO(b""), hdrs, req.full_url, 307)
+                resp.msg = "Temporary Redirect"
+                return resp
+
+        t = UrllibTransport(opener=build_opener({}, https_handler=FakeHTTPS()))
+        with self.assertRaises(ProviderError) as cm:
+            HttpClient((HOST,), transport=t).post_json(URL, {"q": 1})
+        self.assertEqual(cm.exception.code, "redirect_refused")
+        self.assertEqual(seen, [("POST", URL, b'{"q":1}')])
 
 
 if __name__ == "__main__":

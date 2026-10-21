@@ -26,9 +26,10 @@ today:
 - settings read from environment variables, and
 - an offline `doctor` command.
 
-A Hunter.io adapter exists behind the call budget. It runs as a dry run, and live use is not
-reachable from the command line yet (see [docs/hunter.md](docs/hunter.md)). The Apollo.io adapter
-is planned but not written yet.
+Hunter.io and Apollo.io adapters exist behind the call budget. Both run as dry runs, and live
+use is not reachable from the command line yet (see [docs/hunter.md](docs/hunter.md) and
+[docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
+implemented.
 
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer

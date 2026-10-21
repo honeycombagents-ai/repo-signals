@@ -1,17 +1,25 @@
 """Provider registry: register, get, list.
 
-Built in: ``fake`` and ``hunter`` (registered as a dry run, with no budget: live use
-needs a ``HunterProvider(budget, dry_run=False)``). Planned, not implemented yet: ``apollo``.
+Built in: ``fake``, ``hunter`` and ``apollo``. ``hunter`` and ``apollo`` are registered as
+dry runs with no budget: live use needs ``HunterProvider(budget, dry_run=False)`` or
+``ApolloProvider(budget, dry_run=False)``. Names planned but not implemented yet are listed in
+``PLANNED`` (none at the moment).
 """
 import re
 
+from .apollo import ApolloProvider
 from .base import PeopleProvider
 from .fake import FakeProvider
 from .hunter import HunterProvider
 
-PLANNED = ("apollo",)
+PLANNED: tuple[str, ...] = ()
 NAME_RE = re.compile(r"[a-z][a-z0-9_-]{0,31}")
 ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
+
+
+def planned_note() -> str:
+    """``"; planned, not implemented yet: ..."``, or "" when nothing is planned."""
+    return f"; planned, not implemented yet: {', '.join(PLANNED)}" if PLANNED else ""
 
 
 class RegistryError(Exception):
@@ -52,8 +60,7 @@ class Registry:
                 "this provider is planned but not implemented yet "
                 f"(registered: {', '.join(self.names())})")
         raise UnknownProviderError(
-            f"unknown provider (registered: {', '.join(self.names())}; "
-            f"planned, not implemented yet: {', '.join(PLANNED)})")
+            f"unknown provider (registered: {', '.join(self.names())}{planned_note()})")
 
     def names(self) -> tuple[str, ...]:
         return tuple(sorted(self._providers))
@@ -65,6 +72,7 @@ class Registry:
 _DEFAULT = Registry()
 _DEFAULT.register(FakeProvider())
 _DEFAULT.register(HunterProvider())
+_DEFAULT.register(ApolloProvider())
 
 
 def default_registry() -> Registry:

@@ -102,7 +102,7 @@ class FailPaths(unittest.TestCase):
                                "does not name a registered provider")
         self.assertNotIn("nosuch", out)
 
-    def test_planned_provider_is_not_registered(self):
+    def test_provider_missing_from_this_registry(self):
         self.assertFails({**FULL, config.PROVIDER: "apollo"}, "does not name a registered")
 
     def test_required_env_missing(self):
