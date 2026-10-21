@@ -75,7 +75,8 @@ response body, an org name or a term.
 | `rate_limited` | 403, 429, or a previous response said no requests remain |
 | `token_rejected` | 401. Later calls in that run raise the same code without a request. |
 | `not_found` | 404 |
-| `bad_query` | 422 |
+| `org_not_visible` | 422 whose error message says the listed users or repositories cannot be searched. Either the org name is wrong, or the token cannot see that org. Public orgs can be searched without a token; private repositories need a token that can see them. Other targets continue. |
+| `bad_query` | any other 422 |
 | `server_error` | any 5xx |
 | `unexpected_status` | any other non-2xx |
 | `unexpected_shape` | JSON that does not match the expected shape |
@@ -101,6 +102,11 @@ call, check:
       qualifiers and their syntax
 - [ ] confirm the `in:name` qualifier (`QUALIFIER_IN`) against GitHub's current documentation:
       that it limits a repository search to names only
+- [ ] `RESP_ERRORS`, `RESP_ERROR_MESSAGE` and `ORG_NOT_VISIBLE_MESSAGE`: that a search naming an
+      org the caller cannot see returns 422 with exactly this text in `errors[].message`: "The
+      listed users and repositories cannot be searched either because the resources do not
+      exist or you do not have permission to view them." Only that exact text gives
+      `org_not_visible`; the body is compared, never printed or stored
 - [ ] `RESP_ITEMS`, `RESP_TOTAL_COUNT`, `RESP_INCOMPLETE`: the search response fields
 - [ ] `ORG_KEYS`, `CANDIDATE_KEYS`, `REPO_KEYS`, `OWNER_KEYS`: the fields kept from each response
 - [ ] that 403 and 429 are the rate-limit statuses, and what a secondary rate limit looks like

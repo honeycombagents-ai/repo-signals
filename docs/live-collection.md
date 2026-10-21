@@ -112,6 +112,13 @@ Nothing else from GitHub is printed: no descriptions, no websites, no individual
 | 3 | partial: a rate limit, the budget, or an error stopped or skipped part of the run. What was collected is printed. |
 | 4 | refused by the plan check inside the run |
 
+## If a search reports org_not_visible
+
+`search skipped: example.com term 1: org_not_visible` means GitHub refused to search that org.
+Either the org name in the signal file is wrong, or your token cannot see that org. Public orgs
+can be searched without a token. Private repositories need a token that can see them. The other
+targets continue, and the run ends as partial (exit 3).
+
 ## What is never stored or sent
 
 - **Nothing is written to disk.** Evidence goes to stdout only. Filling the sheet is a later step.
@@ -130,6 +137,7 @@ particular:
 - [ ] the `Accept` media type and the API version header
 - [ ] the rate-limit header names, and that 403 and 429 mean rate limited
 - [ ] the search qualifiers, including `in:name`, `fork:false` and `archived:false`
+- [ ] the exact 422 message used for `org_not_visible` (`ORG_NOT_VISIBLE_MESSAGE`)
 - [ ] the response fields kept for organisations and repositories
 - [ ] the search-rate ceiling of 30 per minute used by the plan
 

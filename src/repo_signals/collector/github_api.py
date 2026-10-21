@@ -55,6 +55,12 @@ QUALIFIER_PUSHED_AFTER = "pushed:>={date}"
 RESP_ITEMS = "items"
 RESP_TOTAL_COUNT = "total_count"
 RESP_INCOMPLETE = "incomplete_results"
+RESP_ERRORS = "errors"                            # 422 body: {"errors": [{"message": ...}]}
+RESP_ERROR_MESSAGE = "message"
+# The 422 error message for an org: qualifier the caller cannot search (matched exactly).
+ORG_NOT_VISIBLE_MESSAGE = ("The listed users and repositories cannot be searched either because "
+                           "the resources do not exist or you do not have permission to view "
+                           "them.")
 ORG_KEYS = ("login", "type", "blog", "is_verified")
 CANDIDATE_KEYS = ("login", "type")
 REPO_KEYS = ("name", "full_name", "html_url", "language", "pushed_at", "fork", "archived",
@@ -137,6 +143,20 @@ def allowlist_repo(raw):
         return None
     repo["owner"] = owner
     return repo
+
+
+def _org_not_visible(data):
+    """True only if a 422 body's errors[].message is exactly ORG_NOT_VISIBLE_MESSAGE.
+
+    Strict type checks; anything else is False. The body is only compared, never kept.
+    """
+    if not isinstance(data, dict):
+        return False
+    errors = data.get(RESP_ERRORS)
+    if not isinstance(errors, list):
+        return False
+    return any(isinstance(e, dict) and e.get(RESP_ERROR_MESSAGE) == ORG_NOT_VISIBLE_MESSAGE
+               for e in errors)
 
 
 def _require(pattern, value, code):
@@ -226,7 +246,7 @@ class GitHubClient:
         if status == 404:
             raise ProviderError("not_found")
         if status == 422:
-            raise ProviderError("bad_query")
+            raise ProviderError("org_not_visible" if _org_not_visible(data) else "bad_query")
         if 500 <= status < 600:
             raise ProviderError("server_error")
         raise ProviderError("unexpected_status")
