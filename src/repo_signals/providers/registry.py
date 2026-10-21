@@ -1,13 +1,15 @@
 """Provider registry: register, get, list.
 
-Built in: ``fake``. Planned, not implemented yet: ``hunter``, ``apollo``.
+Built in: ``fake`` and ``hunter`` (registered as a dry run, with no budget: live use
+needs a ``HunterProvider(budget, dry_run=False)``). Planned, not implemented yet: ``apollo``.
 """
 import re
 
 from .base import PeopleProvider
 from .fake import FakeProvider
+from .hunter import HunterProvider
 
-PLANNED = ("hunter", "apollo")
+PLANNED = ("apollo",)
 NAME_RE = re.compile(r"[a-z][a-z0-9_-]{0,31}")
 ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
 
@@ -62,6 +64,7 @@ class Registry:
 
 _DEFAULT = Registry()
 _DEFAULT.register(FakeProvider())
+_DEFAULT.register(HunterProvider())
 
 
 def default_registry() -> Registry:

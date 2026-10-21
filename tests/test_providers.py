@@ -52,7 +52,7 @@ class RegistryTests(unittest.TestCase):
         self.assertNotIn("nosuch", msg)
 
     def test_planned_names_are_reserved_not_implemented(self):
-        self.assertEqual(PLANNED, ("hunter", "apollo"))
+        self.assertEqual(PLANNED, ("apollo",))
         for name in PLANNED:
             with self.subTest(name=name):
                 self.assertNotIn(name, list_providers())
@@ -60,8 +60,8 @@ class RegistryTests(unittest.TestCase):
                     get(name)
                 self.assertIn("not implemented yet", str(cm.exception))
 
-    def test_default_registry_has_fake(self):
-        self.assertEqual(list_providers(), ("fake",))
+    def test_default_registry_has_fake_and_hunter(self):
+        self.assertEqual(list_providers(), ("fake", "hunter"))
         self.assertIsInstance(get("fake"), FakeProvider)
 
     def test_rejects_malformed_providers(self):

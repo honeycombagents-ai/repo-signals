@@ -103,7 +103,7 @@ class FailPaths(unittest.TestCase):
         self.assertNotIn("nosuch", out)
 
     def test_planned_provider_is_not_registered(self):
-        self.assertFails({**FULL, config.PROVIDER: "hunter"}, "does not name a registered")
+        self.assertFails({**FULL, config.PROVIDER: "apollo"}, "does not name a registered")
 
     def test_required_env_missing(self):
         env = {**FULL, config.PROVIDER: "keyed", "STUB_ACCOUNT": "a1"}

@@ -25,7 +25,7 @@ def check_python(version_info):
     return [(FAIL, f"{v}: 3.12 or newer is required")]
 
 
-def check_provider(environ, registry):
+def check_provider(environ, registry, settings=None):
     try:
         name = config.parse_provider(environ)
     except config.ConfigError as e:
@@ -47,6 +47,9 @@ def check_provider(environ, registry):
             lines.append((PASS, f"{var} is set"))
         else:
             lines.append((FAIL, f"{var} is missing (required by the selected provider)"))
+    extra = getattr(provider, "doctor_lines", None)
+    if callable(extra):
+        lines.extend(extra(settings if settings is not None else config.Settings()))
     return lines
 
 
@@ -82,7 +85,7 @@ def run_checks(environ, registry, settings=None, version_info=None):
     version_info = version_info if version_info is not None else sys.version_info
     return [
         *check_python(version_info),
-        *check_provider(environ, registry),
+        *check_provider(environ, registry, settings),
         *check_max_calls(environ),
         *check_dry_run(settings),
         *check_optional(environ, config.SHEET_ID, config.parse_sheet_id,

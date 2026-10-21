@@ -26,7 +26,9 @@ today:
 - settings read from environment variables, and
 - an offline `doctor` command.
 
-The Hunter.io and Apollo.io adapters are planned but not written yet.
+A Hunter.io adapter exists behind the call budget. It runs as a dry run, and live use is not
+reachable from the command line yet (see [docs/hunter.md](docs/hunter.md)). The Apollo.io adapter
+is planned but not written yet.
 
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
