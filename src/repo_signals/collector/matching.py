@@ -1,8 +1,9 @@
 """Match each signal target to a GitHub organisation, never guessing silently.
 
 Method A (the target names an org): look the org up; it must exist and be an Organization. If
-its website is on a different domain, the target is excluded as ``website_mismatch`` unless the
-target sets ``confirm_org = true``.
+its website is on a different domain, or it lists no website at all, the target is excluded as
+``website_mismatch`` (code ``website_mismatch`` or ``no_website``) unless the target sets
+``confirm_org = true``.
 
 Method B (domain only): search organisations by a name derived from the domain, look up at most
 MAX_CANDIDATES_CHECKED candidates, and accept one only if exactly one has a website on exactly
@@ -144,7 +145,9 @@ def match_target(target, client) -> MatchResult:
             return MatchResult(domain, login, None, NOT_AN_ORG, code="not_an_org")
         blog = org.get("blog")
         if blog_host(blog) is None and not (isinstance(blog, str) and blog.strip()):
-            return MatchResult(domain, login, USER, MATCHED, note="no_website")
+            if target.confirm_org:  # no website to check: only the user's confirmation counts
+                return MatchResult(domain, login, USER, MATCHED, note="confirmed")
+            return MatchResult(domain, login, USER, WEBSITE_MISMATCH, code="no_website")
         if domain_matches(blog, domain):
             return MatchResult(domain, login, USER, MATCHED)
         if target.confirm_org:
@@ -204,6 +207,9 @@ def report_line(r) -> str:
     if r.status == MATCHED and r.confidence == WEBSITE_ONLY:
         return (f'{r.domain} -> {r.org_login} (website-only: not included; add '
                 f'org = "{r.org_login}" to confirm)')
+    if r.status == WEBSITE_MISMATCH and r.code == "no_website":
+        return (f"{r.domain} -> {r.org_login} (user, no website listed: excluded; set "
+                "confirm_org = true to include)")
     if r.status == WEBSITE_MISMATCH:
         return (f"{r.domain} -> {r.org_login} (user, website_mismatch: excluded; set "
                 "confirm_org = true to include)")

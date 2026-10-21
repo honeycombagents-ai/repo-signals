@@ -113,8 +113,8 @@ class MethodA(unittest.TestCase):
         for blog in (None, "", "  "):
             with self.subTest(blog=blog):
                 r, _ = self.match(org("example-org", blog))
-                self.assertEqual((r.status, r.note), (MATCHED, "no_website"))
-                self.assertTrue(r.usable)
+                self.assertEqual((r.status, r.code), (WEBSITE_MISMATCH, "no_website"))
+                self.assertFalse(r.usable)
 
     def test_not_found(self):
         r = match_target(target(org_login="example-org"), FakeClient())
@@ -141,6 +141,68 @@ class MethodA(unittest.TestCase):
     def test_bad_login_in_response(self):
         r, _ = self.match({"login": "-SENTINEL", "type": "Organization"})
         self.assertEqual((r.status, r.code), (ERROR, "unexpected_shape"))
+
+
+class NoWebsite(unittest.TestCase):
+    """A user-named org that lists no website is excluded until confirm_org = true."""
+
+    BLOGS = (None, "", "   ", "\t")
+
+    def match(self, blog, confirm):
+        client = FakeClient({"example-org": org("example-org", blog)})
+        return match_target(target(org_login="example-org", confirm=confirm), client)
+
+    def test_excluded_without_confirm(self):
+        for blog in self.BLOGS:
+            with self.subTest(blog=blog):
+                r = self.match(blog, False)
+                self.assertEqual((r.status, r.code, r.confidence, r.org_login),
+                                 (WEBSITE_MISMATCH, "no_website", USER, "example-org"))
+                self.assertIsNone(r.note)
+                self.assertFalse(r.usable)
+
+    def test_usable_when_confirmed(self):
+        for blog in self.BLOGS:
+            with self.subTest(blog=blog):
+                r = self.match(blog, True)
+                self.assertEqual((r.status, r.confidence, r.note, r.code),
+                                 (MATCHED, USER, "confirmed", None))
+                self.assertTrue(r.usable)
+
+    def test_report_line(self):
+        from repo_signals.collector.matching import report_line
+        line = report_line(self.match(None, False))
+        self.assertEqual(line, "example.com -> example-org (user, no website listed: excluded; "
+                               "set confirm_org = true to include)")
+        self.assertEqual(report_line(self.match("", True)), "example.com -> example-org "
+                                                            "(user, confirmed)")
+
+    def test_other_website_cases_unchanged(self):
+        r = self.match("https://www.example.com", False)
+        self.assertEqual((r.status, r.confidence, r.note, r.usable), (MATCHED, USER, None, True))
+        r = self.match("https://SENTINELBLOG.example.invalid", False)
+        self.assertEqual((r.status, r.code, r.usable), (WEBSITE_MISMATCH, "website_mismatch",
+                                                        False))
+        from repo_signals.collector.matching import report_line
+        line = report_line(r)
+        self.assertEqual(line, "example.com -> example-org (user, website_mismatch: excluded; "
+                               "set confirm_org = true to include)")
+        no_sentinel(self, line)
+        r = self.match("https://SENTINELBLOG.example.invalid", True)
+        self.assertEqual((r.status, r.note, r.usable), (MATCHED, "confirmed", True))
+
+    def test_batch_report_has_no_blog_text(self):
+        s = signal([("example.com", "example-org", False), ("a.example.com", "example-labs", True),
+                    ("b.example.com", "example-hq", False)])
+        client = FakeClient({"example-org": org("example-org", None),
+                             "example-labs": org("example-labs", "  "),
+                             "example-hq": org("example-hq", "https://SENTINELBLOG.example.com")})
+        report = match_all(s, client)
+        self.assertEqual([r.org_login for r in report.usable], ["example-labs"])
+        self.assertEqual(report.counts, {WEBSITE_MISMATCH: 2, MATCHED: 1})
+        for line in report.lines:
+            no_sentinel(self, line)
+            self.assertNotIn("://", line)
 
 
 # ---- method B ----

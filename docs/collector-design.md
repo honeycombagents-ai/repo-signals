@@ -140,7 +140,8 @@ wrong company.
    organisation-level names, not individuals). **Neither is included in the output.**
 5. If a user-supplied org's website is on a different domain from the target, the target is
    **excluded** and reported as `website_mismatch`, until you set `confirm_org = true` on that
-   target to say the org is right (decided).
+   target to say the org is right (decided). A user-supplied org that lists **no website** is
+   excluded the same way (code `no_website`) until `confirm_org = true` is set (decided).
 
 **Confidence** is a label, not a number:
 

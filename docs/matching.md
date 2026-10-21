@@ -21,8 +21,10 @@ org = "example-org"
    organisation (a user account, for example), the target is `not_an_org`.
 2. If the org's website is on exactly `example.com` or `www.example.com`, the target is
    matched with confidence `user`.
-3. If the org lists no website, the target is matched with confidence `user` and the report says
-   `no website listed`.
+3. If the org lists **no website**, there is nothing to check the domain against, so the target
+   is **excluded** (`website_mismatch`, code `no_website`) unless the target sets
+   `confirm_org = true`. Then it is matched with confidence `user` and the report says
+   `confirmed`.
 4. If the website is on **any other domain**, the target is **excluded** as `website_mismatch`,
    unless the target sets `confirm_org = true`. Then it is matched with confidence `user` and the
    report says `confirmed`.
@@ -60,7 +62,7 @@ The org's website value is parsed strictly:
 | `matched` | `user` | yes |
 | `matched` | `verified-domain` | yes |
 | `matched` | `website-only` | no, report only |
-| `website_mismatch` | `user` | no, until `confirm_org = true` |
+| `website_mismatch` (website on another domain, or no website) | `user` | no, until `confirm_org = true` |
 | `ambiguous` | | no |
 | `unmatched` | `name-only` or none | no |
 | `not_an_org`, `not_found` | | no |
@@ -86,6 +88,7 @@ It never contains website text, descriptions or error messages. Synthetic exampl
 ```
 example.com -> example-org (user)
 a.example.com -> example-labs (user, website_mismatch: excluded; set confirm_org = true to include)
+g.example.com -> example-new (user, no website listed: excluded; set confirm_org = true to include)
 b.example.com -> example-hq (user, confirmed)
 c.example.com: example-user is not an organisation
 d.example.com: org example-gone not found
