@@ -79,7 +79,7 @@ match it to an organisation (section 3) or report it as unmatched.
 | `name` | yes | a label for the signal: lowercase letters, digits and `-`, up to 48 characters |
 | `keywords` | yes | terms matched against repository names, descriptions and topics |
 | `language` | no | keep only repositories whose primary language matches |
-| `pushed_within_days` | no | keep only repositories pushed within this many days (1 to 730); defaults to 365 |
+| `pushed_within_days` | no | keep only repositories pushed within this many days (1 to 3650, as `collector/signal.py` enforces; this table previously said 1 to 730); defaults to 365 |
 | `min_repo_age_days` | no | keep only repositories at least this old (0 to 3650) |
 | `targets` | yes | the companies: each entry has a `domain`, an `org`, or both, and optionally `confirm_org = true` (section 3) |
 

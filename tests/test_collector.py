@@ -503,30 +503,35 @@ class Doctor(TmpDir):
 FORBIDDEN_MODULES = {"smtplib", "socket", "ssl", "urllib", "http", "subprocess", "asyncio",
                      "ftplib", "requests", "email"}
 FORBIDDEN_RELATIVE = ("http", "providers", "sheets")
+ALLOWED_SUBMODULES = {"urllib.parse"}  # pure string parsing; no network
 
 
 class NoNetwork(unittest.TestCase):
     def test_collector_imports_nothing_that_talks_to_a_network(self):
         files = sorted((ROOT / "src/repo_signals/collector").glob("*.py"))
         self.assertEqual([f.name for f in files],
-                         ["__init__.py", "dry_run.py", "plan.py", "signal.py"])
+                         ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
+                          "github_fields.py", "plan.py", "signal.py"])
         for f in files:
             for node in ast.walk(ast.parse(f.read_text())):
                 with self.subTest(file=f.name, line=getattr(node, "lineno", 0)):
                     if isinstance(node, ast.Import):
                         for a in node.names:
-                            self.assertNotIn(a.name.split(".")[0], FORBIDDEN_MODULES)
+                            if a.name not in ALLOWED_SUBMODULES:
+                                self.assertNotIn(a.name.split(".")[0], FORBIDDEN_MODULES)
                     elif isinstance(node, ast.ImportFrom):
                         mod = node.module or ""
                         if node.level == 0:
-                            self.assertNotIn(mod.split(".")[0], FORBIDDEN_MODULES)
+                            if mod not in ALLOWED_SUBMODULES:
+                                self.assertNotIn(mod.split(".")[0], FORBIDDEN_MODULES)
                         else:
                             self.assertFalse(mod.startswith(FORBIDDEN_RELATIVE), mod)
 
     def test_importing_the_collector_loads_no_network_module(self):
         code = ("import sys; sys.path.insert(0, sys.argv[1]);"
                 "import repo_signals.collector.signal, repo_signals.collector.plan,"
-                " repo_signals.collector.dry_run;"
+                " repo_signals.collector.dry_run, repo_signals.collector.github_fields,"
+                " repo_signals.collector.filters, repo_signals.collector.evidence;"
                 "bad = [m for m in ('repo_signals.http', 'socket', 'ssl', 'http.client',"
                 " 'urllib.request', 'subprocess', 'smtplib') if m in sys.modules];"
                 "print(bad)")
