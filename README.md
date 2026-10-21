@@ -38,6 +38,9 @@ An email drafter fills the sheet's `email_draft` column from plain-text template
 is grounded on public evidence and includes your postal address and opt-out text. A suppression
 list is honoured. Nothing is ever sent (see [docs/drafting.md](docs/drafting.md)).
 
+A GitHub signal collector is designed but not built yet (see
+[docs/collector-design.md](docs/collector-design.md)).
+
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
 repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
