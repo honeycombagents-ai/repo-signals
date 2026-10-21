@@ -64,13 +64,12 @@ dropped 1: owner_not_org
 ## Step 3: fixed summary templates
 
 `build_evidence(fact, term, kind, company_domain, today, terms=signal.terms)` builds the summary
-from one of two fixed templates. There are only two kinds in v1, `repo` and `topic`. There is no
-`file` kind.
+from one fixed template. There is only one kind in v1, `repo`. There is no `topic` kind and no
+`file` kind (decided).
 
 | kind | template |
 |---|---|
 | `repo` | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
-| `topic` | `The public repository {full_name} is tagged with the topic {term}{language_clause}, last pushed on {pushed_date}.` |
 
 `{language_clause}` is empty when the repository has no language. Otherwise it is
 ` and its primary language on GitHub is {language}`.
@@ -79,7 +78,7 @@ Synthetic examples:
 
 ```
 The public repository example-org/widget matches the term examplelib and its primary language on GitHub is Python, last pushed on 2026-09-30.
-The public repository example-org/widget is tagged with the topic examplelib, last pushed on 2026-09-30.
+The public repository example-org/widget matches the term examplelib, last pushed on 2026-09-30.
 ```
 
 Every inserted value is checked, and the hit is dropped (not patched) with a code when a check
@@ -87,7 +86,7 @@ fails:
 
 | code | when |
 |---|---|
-| `bad_kind` | the kind is not `repo` or `topic` |
+| `bad_kind` | the kind is not `repo` (`topic` and `file` are refused) |
 | `term_not_in_signal` | the term is not exactly one of the signal's own terms |
 | `owner_not_org`, `bad_full_name`, `url_*` | the same checks as the filters, repeated as a safeguard |
 | `bad_language` | the language is not a short name: letters, digits, `+ # . -` and single spaces, starting with a letter, at most 32 characters |

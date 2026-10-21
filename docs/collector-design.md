@@ -266,7 +266,6 @@ Each accepted hit becomes one `models.Evidence(company_domain, summary, url, kin
 | kind | when | summary template |
 |---|---|---|
 | `repo` | the repository's name or description matches a keyword | `The public repository {full_name} matches the term {term}{language_clause}, last pushed on {pushed_date}.` |
-| `topic` | the repository is tagged with a topic equal to a keyword | `The public repository {full_name} is tagged with the topic {term}{language_clause}, last pushed on {pushed_date}.` |
 
 `{language_clause}` is either empty or ` and its primary language on GitHub is {language}`.
 `{pushed_date}` is the `pushed_at` date as `YYYY-MM-DD`. A rendered example, with synthetic
@@ -489,3 +488,4 @@ Each PR is offline-tested with a fake transport and keeps dry run as the default
 9. **No file-name signals in v1:** no code search, so no `file` kind.
 10. **Signal file setting:** `REPO_SIGNALS_SIGNAL_FILE`, one file per run.
 11. **Default window:** `pushed_within_days` defaults to 365.
+12. **One evidence kind in v1:** `repo` only. The `topic` kind is dropped, as is `file`.

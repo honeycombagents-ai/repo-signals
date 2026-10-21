@@ -511,7 +511,8 @@ class NoNetwork(unittest.TestCase):
         files = sorted((ROOT / "src/repo_signals/collector").glob("*.py"))
         self.assertEqual([f.name for f in files],
                          ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
-                          "github_api.py", "github_fields.py", "plan.py", "signal.py"])
+                          "github_api.py", "github_fields.py", "matching.py", "plan.py",
+                          "signal.py"])
         # github_api.py is the one collector module allowed to use http.HttpClient; it is
         # tested on its own (test_collector_client.py) and is unreachable from the CLI.
         files = [f for f in files if f.name != "github_api.py"]

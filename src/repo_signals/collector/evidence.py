@@ -13,12 +13,10 @@ from .filters import FULL_NAME_RE, check_owner, check_url
 from .github_fields import RepoFact
 from .signal import _TERM_RE
 
-KINDS = ("repo", "topic")
+KINDS = ("repo",)   # v1: no "topic" and no "file" kind (decided)
 TEMPLATES = {
     "repo": "The public repository {full_name} matches the term {term}{language_clause}, "
             "last pushed on {pushed_date}.",
-    "topic": "The public repository {full_name} is tagged with the topic {term}"
-             "{language_clause}, last pushed on {pushed_date}.",
 }
 LANGUAGE_CLAUSE = " and its primary language on GitHub is {language}"
 MAX_SUMMARY_CHARS = EVIDENCE_SUMMARY_MAX

@@ -265,22 +265,20 @@ class EvidenceTemplates(unittest.TestCase):
         self.assertEqual(cm.exception.code, code)
         self.assertNotIn("SENTINEL", repr(cm.exception).upper() + str(cm.exception.args).upper())
 
-    def test_both_kinds_and_both_language_clauses(self):
+    def test_repo_kind_and_both_language_clauses(self):
         cases = [("repo", "Python", "The public repository example-org/widget matches the term "
                   "examplelib and its primary language on GitHub is Python, last pushed on "
                   "2026-09-30."),
                  ("repo", None, "The public repository example-org/widget matches the term "
                   "examplelib, last pushed on 2026-09-30."),
-                 ("topic", "C++", "The public repository example-org/widget is tagged with the "
-                  "topic examplelib and its primary language on GitHub is C++, last pushed on "
-                  "2026-09-30."),
-                 ("topic", None, "The public repository example-org/widget is tagged with the "
-                  "topic examplelib, last pushed on 2026-09-30.")]
+                 ("repo", "C++", "The public repository example-org/widget matches the term "
+                  "examplelib and its primary language on GitHub is C++, last pushed on "
+                  "2026-09-30.")]
         for kind, language, summary in cases:
             with self.subTest(kind=kind, language=language):
                 e = self.build(fact(language=language), kind=kind)
                 self.assertEqual(e, Evidence(DOMAIN, summary, web("example-org/widget"), kind))
-        self.assertEqual(KINDS, ("repo", "topic"))
+        self.assertEqual(KINDS, ("repo",))
 
     def test_templates_match_the_design_doc(self):
         doc = (ROOT / "docs/collector-design.md").read_text()
@@ -297,8 +295,12 @@ class EvidenceTemplates(unittest.TestCase):
         self.drops("term_not_in_signal", term=None, terms=(None,))
         self.assertEqual(self.build(term="example-sdk").summary.count("example-sdk"), 1)
 
+    def test_topic_kind_rejected(self):
+        self.drops("bad_kind", kind="topic")
+        self.assertNotIn("topic", evidence_mod.TEMPLATES)
+
     def test_no_file_kind(self):
-        for kind in ("file", "topics", "Repo", "", None):
+        for kind in ("topic", "file", "topics", "Repo", "", None):
             with self.subTest(kind=kind):
                 self.drops("bad_kind", kind=kind)
 
@@ -322,7 +324,7 @@ class EvidenceTemplates(unittest.TestCase):
         long_fact = fact(owner_login=owner, name=name, full_name=f"{owner}/{name}",
                          html_url=web(f"{owner}/{name}"), language="L" * 32)
         term = "t" * 60
-        self.drops("summary_too_long", f=long_fact, term=term, terms=(term,), kind="topic")
+        self.drops("summary_too_long", f=long_fact, term=term, terms=(term,), kind="repo")
         short = self.build(fact(language=None), kind="repo")
         self.assertLessEqual(len(short.summary), 300)
 
@@ -360,7 +362,7 @@ class EvidenceTemplates(unittest.TestCase):
         self.assertEqual((report.kept, report.dropped), (1, Counter({"bad_kind": 1})))
 
     def test_evidence_passes_the_drafting_guard(self):
-        e = self.build(kind="topic")
+        e = self.build(kind="repo")
         sender = Sender("Avery Alder", "Engineer", "Example Org", "1 Example Street",
                         "Reply stop to opt out.")
         p = Person(name="Blake Birch", email=None, title="CTO", company_domain=DOMAIN,
