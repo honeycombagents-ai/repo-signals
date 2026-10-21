@@ -27,6 +27,9 @@ from .signal import (REPOS_PER_TARGET_AND_TERM, TERM_MAX_CHARS, TERM_MIN_CHARS, 
 # --- GitHub API details --------------------------------------------------------------------
 # UNVERIFIED general knowledge, not checked against GitHub's documentation:
 # verify against GitHub's current documentation before first live use.
+# Checked live on 2026-10-21: the org lookup, org search, repository search, the qualifiers,
+# the rate-limit headers and the version header behaved as assumed. GitHub's documentation has
+# not been re-read yet, so the details above are still marked unverified.
 API_HOST = "api.github.com"
 API_BASE = "https://api.github.com"
 ALLOWED_HOSTS = frozenset({API_HOST})

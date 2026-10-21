@@ -17,7 +17,8 @@ A human reviews every draft and sends it. Repo Signals itself never sends anythi
 
 ## Status and quick start
 
-**Early. Dry run only.** There is no live mode yet and nothing makes a network call. What exists
+**Early. Dry run by default.** Nothing makes a network call unless you turn dry run off, and every
+live command is gated (`collect --live` and `run --live` also need a typed "yes"). What exists
 today:
 
 - the people-provider interface,
@@ -26,9 +27,9 @@ today:
 - settings read from environment variables, and
 - an offline `doctor` command.
 
-Hunter.io and Apollo.io adapters exist behind the call budget. Both run as dry runs, and live
-use is not reachable from the command line yet (see [docs/hunter.md](docs/hunter.md) and
-[docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
+Hunter.io and Apollo.io adapters exist behind the call budget. Both are dry runs by default, and
+live use is reachable only through the gated `repo-signals run --live` (see
+[docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
 implemented.
 
 A Google Sheet writer appends people for review. It runs as a dry run by default, and it never
@@ -43,6 +44,10 @@ A GitHub signal collector turns a signal file into evidence (see
 the file and prints the plan with no network call (see [docs/signal-file.md](docs/signal-file.md)).
 Live collection is gated: dry run must be off, and `repo-signals collect --live` asks you to type
 "yes" every time (see [docs/live-collection.md](docs/live-collection.md)).
+
+`repo-signals run` chains it all: collect, find people, draft, and append rows to the sheet, with
+a separate call budget for each service. It is a dry run by default, and `run --live` has the
+same gates and typed "yes" (see [docs/run.md](docs/run.md)). Nothing is ever sent by email.
 
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
@@ -60,7 +65,9 @@ Settings come from environment variables only:
 | variable | meaning | default |
 |---|---|---|
 | `REPO_SIGNALS_PROVIDER` | people provider name | `fake` |
-| `REPO_SIGNALS_MAX_CALLS` | provider call cap, 1 to 500 | `25` |
+| `REPO_SIGNALS_MAX_CALLS` | GitHub call cap, 1 to 500 | `25` |
+| `REPO_SIGNALS_PROVIDER_MAX_CALLS` | people-provider call cap for `run`, 1 to 500 | `25` |
+| `REPO_SIGNALS_SHEETS_MAX_CALLS` | Google Sheets call cap for `run`, 1 to 500 | `10` |
 | `REPO_SIGNALS_SHEET_ID` | Google Sheet id | unset (WARN) |
 | `REPO_SIGNALS_GITHUB_TOKEN` | GitHub token, optional: only raises rate limits, sent only in a header | unset (WARN) |
 | `REPO_SIGNALS_GOOGLE_CREDENTIALS` | path to a Google service-account JSON key file | unset (WARN) |

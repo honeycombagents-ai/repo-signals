@@ -5,6 +5,7 @@
     terms = ["examplelib"]          # 1 to 5 search terms
     language = "Python"             # optional
     pushed_within_days = 365        # optional; 1 to 3650; default 365
+    titles = ["CTO"]                # optional; up to 5 job titles for the people lookup
 
     [[targets]]                     # 1 to 50 targets
     domain = "example.com"
@@ -31,14 +32,19 @@ PUSHED_WITHIN_DAYS_MAX = 3650
 REPOS_PER_TARGET_AND_TERM = 5      # used by the collector, not by the plan
 EVIDENCE_PER_TARGET = 10           # used by the collector, not by the plan
 SCHEMA_VERSION = 1
+MAX_TITLES = 5
+TITLE_MAX_CHARS = 60
 
-TOP_KEYS = frozenset({"schema", "name", "terms", "language", "pushed_within_days", "targets"})
+TOP_KEYS = frozenset({"schema", "name", "terms", "language", "pushed_within_days", "targets",
+                      "titles"})
 TARGET_KEYS = frozenset({"domain", "org", "confirm_org"})
 _CODE = re.compile(r"[a-z][a-z0-9_]{0,63}")
 _NAME_RE = re.compile(r"[a-z][a-z0-9-]{0,47}")
 # Letters, digits and . _ + - only: no space, quote or colon, so a term cannot add a qualifier.
 _TERM_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
 _LANGUAGE_RE = re.compile(r"[A-Za-z][A-Za-z0-9+#.-]{0,31}")
+# A job title: letters and digits, single spaces, and & . / + - ; for example "VP Engineering".
+_TITLE_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9&./+-]| (?! ))*")
 _DOMAIN_RE = re.compile(r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
                         r"[a-z][a-z0-9-]{0,61}[a-z0-9]")
 # GitHub login shape (unverified): letters, digits, single inner hyphens, at most 39 characters.
@@ -69,6 +75,7 @@ class Signal:
     targets: tuple[Target, ...]
     language: str | None = None
     pushed_within_days: int = DEFAULT_PUSHED_WITHIN_DAYS
+    titles: tuple[str, ...] = ()
 
     def __repr__(self):
         return f"Signal({len(self.terms)} term(s), {len(self.targets)} target(s))"
@@ -95,6 +102,24 @@ def _terms(raw):
         if term.casefold() in seen:
             raise SignalError("signal_duplicate_term")
         seen.add(term.casefold())
+    return tuple(raw)
+
+
+def _titles(raw):
+    if raw is None:
+        return ()
+    if not isinstance(raw, list):
+        raise SignalError("signal_bad_titles")
+    if len(raw) > MAX_TITLES:
+        raise SignalError("signal_too_many_titles")
+    seen = set()
+    for n, title in enumerate(raw, 1):
+        if (not isinstance(title, str) or not 1 <= len(title) <= TITLE_MAX_CHARS
+                or not _TITLE_RE.fullmatch(title) or title.endswith(" ")):
+            raise SignalError(f"signal_bad_title_{n}")
+        if title.casefold() in seen:
+            raise SignalError("signal_duplicate_title")
+        seen.add(title.casefold())
     return tuple(raw)
 
 
@@ -171,7 +196,8 @@ def parse_signal(raw) -> Signal:
     if not _is_int(days) or not 1 <= days <= PUSHED_WITHIN_DAYS_MAX:
         raise SignalError("signal_bad_pushed_within_days")
     return Signal(name=name, terms=terms, targets=_targets(data.get("targets")),
-                  language=language, pushed_within_days=days)
+                  language=language, pushed_within_days=days,
+                  titles=_titles(data.get("titles")))
 
 
 def load_signal(path) -> Signal:

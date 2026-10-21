@@ -145,7 +145,8 @@ class HappyPath(unittest.TestCase):
     def test_summary_lines(self):
         lines = summarize(self.result)
         self.assertEqual(lines, [
-            "collect: complete", "planned requests: 6; searches made: 4", "matching: matched 2",
+            "collect: complete", "planned requests: 6; requests made: 6 (matching 2, searches 4)",
+            "matching: matched 2",
             "example.com -> example-org (user)", "example.invalid -> example-labs (user)",
             "evidence: example.com: 3", "evidence: example.invalid: 1", "kept: 4"])
         clean(self, lines)

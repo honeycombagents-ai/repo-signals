@@ -32,6 +32,9 @@ from .signal import EVIDENCE_PER_TARGET, Signal
 
 KIND = "repo"
 STOP_CODES = ("rate_limited", "budget_exhausted")
+# Codes a client raises BEFORE sending anything: those calls made no request.
+NO_REQUEST_CODES = ("budget_exhausted", "dry_run", "bad_term", "bad_org", "bad_name",
+                    "bad_language", "bad_date")
 COMPLETE, PARTIAL, REFUSED = "complete", "partial", "refused"
 _CODE_RE = re.compile(r"[a-z][a-z0-9_]{0,63}")
 
@@ -56,8 +59,13 @@ class RunReport(NamedTuple):
     refusal: str | None                  # e.g. "plan_over_budget: 27 planned, 25 allowed"
     planned_requests: int
     suppressed: tuple[str, ...]          # target domains skipped as suppressed
-    searches_made: int
+    searches_made: int                   # search requests made
     skipped_searches: tuple[SkippedSearch, ...]
+    matching_requests: int = 0           # org lookups and org searches made
+
+    @property
+    def requests_made(self) -> int:
+        return self.matching_requests + self.searches_made
 
 
 class CollectResult(NamedTuple):
@@ -70,6 +78,35 @@ class CollectResult(NamedTuple):
 def _code(e):
     code = getattr(e, "code", None)
     return code if isinstance(code, str) and _CODE_RE.fullmatch(code) else "client_error"
+
+
+class _CountingClient:
+    """Counts the client calls that made a request (matching and searches separately)."""
+
+    def __init__(self, client):
+        self._client = client
+        self.matching = 0
+        self.searches = 0
+
+    def _call(self, kind, method, *args):
+        try:
+            result = method(*args)
+        except Exception as e:
+            if getattr(e, "code", None) not in NO_REQUEST_CODES:
+                setattr(self, kind, getattr(self, kind) + 1)
+            raise
+        setattr(self, kind, getattr(self, kind) + 1)
+        return result
+
+    def get_org(self, login):
+        return self._call("matching", self._client.get_org, login)
+
+    def search_orgs(self, name):
+        return self._call("matching", self._client.search_orgs, name)
+
+    def search_repos(self, term, org, language=None, pushed_after=None):
+        return self._call("searches", self._client.search_repos, term, org, language,
+                          pushed_after)
 
 
 def _refused(error):
@@ -87,6 +124,7 @@ def collect(signal, client, suppression, budget_cap, today) -> CollectResult:
 
     active = dataclasses.replace(
         signal, targets=tuple(t for t in signal.targets if t.domain not in plan.skipped))
+    client = _CountingClient(client)
     match_report = match_all(active, client)
     filter_report = FilterReport()
     evidence = {}
@@ -94,7 +132,6 @@ def collect(signal, client, suppression, budget_cap, today) -> CollectResult:
     stop = next((r.code for r in match_report.results
                  if r.status in (RATE_LIMITED, ERROR) and r.code in STOP_CODES), None)
     pushed_after = today - timedelta(days=signal.pushed_within_days)
-    searches = 0
 
     for match in match_report.usable:
         domain = match.domain
@@ -104,7 +141,6 @@ def collect(signal, client, suppression, budget_cap, today) -> CollectResult:
             if stop is not None:
                 skipped.append(SkippedSearch(domain, number, "not_attempted"))
                 continue
-            searches += 1
             try:
                 result = client.search_repos(term, match.org_login, signal.language, pushed_after)
             except Exception as e:  # one search's problem is recorded, never raised
@@ -143,7 +179,8 @@ def collect(signal, client, suppression, budget_cap, today) -> CollectResult:
 
     match_trouble = any(r.status in (RATE_LIMITED, ERROR) for r in match_report.results)
     status = PARTIAL if (stop or skipped or match_trouble) else COMPLETE
-    run = RunReport(status, stop, None, plan.total, plan.skipped, searches, tuple(skipped))
+    run = RunReport(status, stop, None, plan.total, plan.skipped, client.searches,
+                    tuple(skipped), client.matching)
     return CollectResult({d: tuple(e) for d, e in evidence.items()}, match_report,
                          filter_report, run)
 
@@ -167,7 +204,9 @@ def summarize(result) -> list[str]:
         return [f"collect: refused: {run.refusal}; nothing requested"]
     head = "collect: complete" if run.status == COMPLETE else \
         f"collect: partial ({run.code})" if run.code else "collect: partial"
-    lines = [head, f"planned requests: {run.planned_requests}; searches made: {run.searches_made}"]
+    lines = [head, f"planned requests: {run.planned_requests}; requests made: "
+                   f"{run.requests_made} (matching {run.matching_requests}, searches "
+                   f"{run.searches_made})"]
     if run.suppressed:
         lines.append(f"skipped (suppressed): {', '.join(run.suppressed)}")
     counts = result.match_report.counts

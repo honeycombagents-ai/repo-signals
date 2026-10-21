@@ -7,7 +7,7 @@ confidence is reported and left out. The design is in
 
 Matching takes any client with `get_org(login)` and `search_orgs(name)`, such as the collector's
 GitHub client ([github-client.md](github-client.md)). It contains no HTTP code, and the tests
-use a fake client. It is not reachable from the command line yet.
+use a fake client. It runs as part of the gated `collect --live` and `run --live`.
 
 ## Method A: you name the org
 

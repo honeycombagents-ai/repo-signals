@@ -1,7 +1,11 @@
 """Settings from environment variables only, parsed strictly.
 
     REPO_SIGNALS_PROVIDER      provider name (default: fake)
-    REPO_SIGNALS_MAX_CALLS     whole number from 1 to the hard bound (default: 25)
+    REPO_SIGNALS_MAX_CALLS     GitHub call cap: 1 to the hard bound (default: 25)
+    REPO_SIGNALS_PROVIDER_MAX_CALLS
+                               people-provider call cap for "run": 1 to the hard bound (default: 25)
+    REPO_SIGNALS_SHEETS_MAX_CALLS
+                               Google Sheets call cap for "run": 1 to the hard bound (default: 10)
     REPO_SIGNALS_SHEET_ID      Google Sheet id (optional)
     REPO_SIGNALS_GITHUB_TOKEN  GitHub token (optional)
     REPO_SIGNALS_GOOGLE_CREDENTIALS
@@ -31,6 +35,10 @@ from .budget import DEFAULT_MAX_CALLS, HARD_MAX_CALLS
 
 PROVIDER = "REPO_SIGNALS_PROVIDER"
 MAX_CALLS = "REPO_SIGNALS_MAX_CALLS"
+PROVIDER_MAX_CALLS = "REPO_SIGNALS_PROVIDER_MAX_CALLS"
+SHEETS_MAX_CALLS = "REPO_SIGNALS_SHEETS_MAX_CALLS"
+DEFAULT_PROVIDER_MAX_CALLS = 25
+DEFAULT_SHEETS_MAX_CALLS = 10
 SHEET_ID = "REPO_SIGNALS_SHEET_ID"
 GITHUB_TOKEN = "REPO_SIGNALS_GITHUB_TOKEN"
 GOOGLE_CREDENTIALS = "REPO_SIGNALS_GOOGLE_CREDENTIALS"
@@ -76,13 +84,25 @@ def parse_provider(environ) -> str:
     return raw
 
 
-def parse_max_calls(environ) -> int:
-    raw = _raw(environ, MAX_CALLS)
+def _parse_cap(environ, var, default) -> int:
+    raw = _raw(environ, var)
     if raw is None:
-        return DEFAULT_MAX_CALLS
+        return default
     if not _MAX_CALLS_RE.fullmatch(raw) or int(raw) > HARD_MAX_CALLS:
-        raise ConfigError(MAX_CALLS, f"must be a whole number from 1 to {HARD_MAX_CALLS}")
+        raise ConfigError(var, f"must be a whole number from 1 to {HARD_MAX_CALLS}")
     return int(raw)
+
+
+def parse_max_calls(environ) -> int:
+    return _parse_cap(environ, MAX_CALLS, DEFAULT_MAX_CALLS)
+
+
+def parse_provider_max_calls(environ) -> int:
+    return _parse_cap(environ, PROVIDER_MAX_CALLS, DEFAULT_PROVIDER_MAX_CALLS)
+
+
+def parse_sheets_max_calls(environ) -> int:
+    return _parse_cap(environ, SHEETS_MAX_CALLS, DEFAULT_SHEETS_MAX_CALLS)
 
 
 def parse_sheet_id(environ) -> str | None:
@@ -162,6 +182,8 @@ class Settings:
     github_token: str | None = None
     google_credentials: str | None = None
     dry_run: bool = True
+    provider_max_calls: int = DEFAULT_PROVIDER_MAX_CALLS
+    sheets_max_calls: int = DEFAULT_SHEETS_MAX_CALLS
 
     def __repr__(self):
         shown = ", ".join(
@@ -182,4 +204,6 @@ def load_settings(environ=None) -> Settings:
         github_token=parse_github_token(environ),
         google_credentials=parse_google_credentials(environ),
         dry_run=parse_dry_run(environ),
+        provider_max_calls=parse_provider_max_calls(environ),
+        sheets_max_calls=parse_sheets_max_calls(environ),
     )

@@ -321,7 +321,8 @@ class LiveRun(Case):
         self.assertEqual(code, 0, self.text)
         lines = self.out.getvalue().split('these GitHub requests: ', 1)[1].splitlines()
         self.assertEqual(lines, [
-            "collect: complete", "planned requests: 2; searches made: 1", "matching: matched 1",
+            "collect: complete", "planned requests: 2; requests made: 2 (matching 1, searches 1)",
+            "matching: matched 1",
             "example.com -> example-org (user)", "evidence: example.com: 1", "kept: 1",
             "dropped 1: term_not_in_name",
             "evidence for example.com:",

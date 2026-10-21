@@ -1,8 +1,8 @@
 # The Hunter people provider
 
 `hunter` looks up people at a company domain with Hunter's domain search. It is registered by
-default as a **dry run**. Live use is not reachable from the command line yet: the `repo-signals`
-command keeps dry run on, and `doctor` says so.
+default as a **dry run**. Live use is reachable from the command line only through the gated
+`repo-signals run --live` (see [run.md](run.md)), with its own provider call budget.
 
 Code: `src/repo_signals/providers/hunter.py`, which uses the strict HTTPS client in
 `src/repo_signals/http.py`.

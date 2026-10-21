@@ -5,7 +5,8 @@
   headers differ is REFUSED (``header_mismatch``): someone else's data is never overwritten.
 - Rows are only appended. A person already in the sheet (same email or, when the email is
   empty, same name and company_domain) is skipped: never duplicated, never overwritten.
-- email_draft and reviewed are written empty and never written again.
+- reviewed is always written empty. email_draft is written empty, or with an initial draft when
+  the record supplies one; either way only on a NEW row. Existing rows are never written again.
 - Every cell built from external data passes the formula-injection guard: a value starting with
   = + - @ (or a tab or carriage return) that is not a plain number gets a leading single quote.
 - Dry run (the default) never touches the network. It prints what WOULD be written, with
@@ -96,15 +97,17 @@ class SheetWriter:
         now = self._clock() if self._clock is not None else datetime.now(UTC)
         return now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    def build_row(self, person, signal_evidence, written_at):
-        if not isinstance(person, Person) or not isinstance(signal_evidence, str):
-            raise ValueError("each record is a Person and a signal_evidence string")
+    def build_row(self, person, signal_evidence, written_at, email_draft=""):
+        if not isinstance(person, Person) or not isinstance(signal_evidence, str) \
+                or not isinstance(email_draft, str):
+            raise ValueError("each record is a Person, a signal_evidence string and an "
+                             "optional email_draft string")
         cells = {
             "name": guard_cell(person.name), "email": guard_cell(person.email or ""),
             "title": guard_cell(person.title), "company_domain": guard_cell(person.company_domain),
             "source": guard_cell(person.source), "confidence": round(person.confidence, 3),
             "signal_evidence": guard_cell(signal_evidence),
-            "email_draft": "", "reviewed": "",
+            "email_draft": guard_cell(email_draft), "reviewed": "",
             "run_id": guard_cell(self.run_id), "written_at": guard_cell(written_at),
         }
         return [cells[c] for c in COLUMNS]
@@ -113,8 +116,12 @@ class SheetWriter:
         written_at = self._now()
         rows = []
         for rec in records:
-            person, evidence = (rec, "") if isinstance(rec, Person) else rec
-            rows.append(self.build_row(person, evidence, written_at))
+            if isinstance(rec, Person):
+                rec = (rec, "")
+            if not isinstance(rec, tuple) or len(rec) not in (2, 3):
+                raise ValueError("each record is a Person, (Person, evidence) or "
+                                 "(Person, evidence, email_draft)")
+            rows.append(self.build_row(*rec[:2], written_at, *rec[2:]))
         return rows
 
     @staticmethod

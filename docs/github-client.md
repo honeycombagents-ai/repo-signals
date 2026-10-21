@@ -1,8 +1,8 @@
 # The GitHub client
 
 `src/repo_signals/collector/github_api.py` holds the collector's GitHub client. It exists so it
-can be tested offline against a fake transport. It is **not reachable from the command line**,
-and it is a **dry run by default**: in a dry run it builds no transport, and every call raises
+can be tested offline against a fake transport. It is reachable from the command line only through
+the gated `probe-org`, `collect --live` and `run --live`, and it is a **dry run by default**: in a dry run it builds no transport, and every call raises
 `dry_run`. The design is in [collector-design.md](collector-design.md), section 4.
 
 ## What it does
@@ -84,6 +84,11 @@ response body, an org name or a term.
 | `timeout`, `malformed_json`, `response_too_large`, `redirect_refused`, `network_error`, `tls_error` | from `http.HttpClient` |
 
 ## Unverified details checklist
+
+**Live check, 2026-10-21:** the org lookup, the org search, the repository search, the search
+qualifiers, the rate-limit headers and the version header were checked live and behaved as
+assumed. GitHub's documentation has **not** been re-read yet, so the items below stay open until it
+is.
 
 Everything GitHub-specific sits in one constants block at the top of `github_api.py`, marked
 "verify against GitHub's current documentation before first live use". Before the first live

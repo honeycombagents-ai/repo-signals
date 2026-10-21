@@ -23,6 +23,10 @@ def main(argv=None) -> int:
                       help="make the planned GitHub requests after a typed confirmation")
     p = sub.add_parser("probe-org", help="one GitHub request: look up one organisation")
     p.add_argument("login", help="the organisation login")
+    r = sub.add_parser("run", help="collect, find people, draft and write to the sheet "
+                                   "(dry run unless --live)")
+    r.add_argument("--live", action="store_true",
+                   help="make real requests after a typed confirmation")
     args = ap.parse_args(argv)
     if args.command == "doctor":
         return doctor.run(online=args.online)
@@ -37,4 +41,7 @@ def main(argv=None) -> int:
     if args.command == "probe-org":
         from .collector import live  # loaded only for the live path
         return live.run_probe(args.login, os.environ)
+    if args.command == "run":
+        from . import run as run_command  # loaded only when used
+        return run_command.run(live=args.live)
     return 2

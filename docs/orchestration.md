@@ -74,14 +74,16 @@ Besides the filter codes in [evidence.md](evidence.md), orchestration counts:
 
 ## The report
 
-`summarize(result)` returns code-only lines: the status, the planned and made request counts,
+`summarize(result)` returns code-only lines: the status, the planned request count and the
+requests actually made (matching calls plus searches; a call refused before sending, such as
+`budget_exhausted`, is not counted),
 the suppressed domains, a count by match status, the match lines, Evidence counts per domain,
 drop counts and skipped searches. The lines hold domains, org logins, labels, codes and numbers
 only: never a description, a website, an error message or other free text. A synthetic example:
 
 ```
 collect: partial (rate_limited)
-planned requests: 6; searches made: 2
+planned requests: 6; requests made: 4 (matching 2, searches 2)
 matching: matched 2
 example.com -> example-org (user)
 example.invalid -> example-labs (user)

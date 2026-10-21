@@ -177,8 +177,10 @@ a function from company domain to Evidence items.
 the recipient's email masked (`b***@acme.example.com`). It returns the rows unchanged and writes
 nothing.
 
-The sheet writer appends new rows with `email_draft` empty and never updates an existing row.
-Wiring filled drafts into the sheet is a later step, and it will keep a person in the loop.
+`repo-signals run` (see [run.md](run.md)) writes each new person's draft into `email_draft` when it
+appends their row. The sheet writer never updates an existing row, so a draft a person has edited
+is never replaced. A person reviews every draft before anything is sent, by them, from their own
+mail client.
 
 ## Optional: drafting with your own model
 

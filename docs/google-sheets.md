@@ -4,8 +4,8 @@
 can review them. It is a **dry run** by default. It never deletes or clears anything, and it never
 overwrites someone else's data.
 
-Live writing is not reachable from the command line yet: the `repo-signals` command keeps dry run
-on.
+Live writing is reachable from the command line only through the gated `repo-signals run --live`
+(see [run.md](run.md)).
 
 ## Setup
 
@@ -86,7 +86,7 @@ The tool owns these columns, in this order, and no others:
 |---|---|
 | `name`, `email`, `title`, `company_domain`, `source`, `confidence` | from the people provider |
 | `signal_evidence` | why this person was found |
-| `email_draft` | **empty**. For a person to fill in. |
+| `email_draft` | empty, or an initial draft written by `repo-signals run`, **only when the row is new**. For a person to edit. |
 | `reviewed` | **empty**. For a person to fill in. |
 | `run_id`, `written_at` | which run wrote the row, and when (UTC) |
 
@@ -104,7 +104,8 @@ You can add your own columns to the right of `written_at`. The tool never writes
 - **It never duplicates a person.** A person already in the sheet is skipped and the existing
   row is left alone. A match means the same email, ignoring case. When the new person has no
   email, a match means the same name and company_domain.
-- **It never touches `email_draft` or `reviewed` after appending.** Rows are only ever appended,
+- **It never touches `email_draft` or `reviewed` after appending.** An initial draft can only be
+  part of a new row. Rows are only ever appended,
   and the client refuses any update that would touch those columns below the header row.
 - **It does not let a cell become a formula.** A value from external data that starts with `=`,
   `+`, `-` or `@` (or with a tab or carriage return) gets a leading `'`, unless it is a plain

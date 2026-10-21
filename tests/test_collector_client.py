@@ -453,7 +453,8 @@ class Surface(unittest.TestCase):
             self.assertNotIn("GitHubClient", text, name)
         users = [p.name for p in (ROOT / "src").rglob("*.py")
                  if "GitHubClient" in p.read_text() or "github_api" in p.read_text()]
-        self.assertEqual(sorted(users), ["github_api.py", "live.py"])  # live.py: the gated path
+        # live.py and run.py are the gated live paths (typed confirmation required).
+        self.assertEqual(sorted(users), ["github_api.py", "live.py", "run.py"])
         code = ("import sys; sys.path.insert(0, sys.argv[1]); import repo_signals.cli;"
                 "print('repo_signals.collector.github_api' in sys.modules)")
         r = subprocess.run([sys.executable, "-c", code, str(_src.SRC)],

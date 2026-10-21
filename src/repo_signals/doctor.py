@@ -21,6 +21,7 @@ from .collector.signal import SignalError, load_signal
 from .drafting.base import DraftError
 from .drafting.suppression import load_suppression
 from .drafting.template import BUILTIN_TEMPLATES, load_template
+from .run_gates import check_gates
 from .sheets import google_api
 from .sheets.auth import inspect_credentials
 
@@ -74,6 +75,25 @@ def check_max_calls(environ):
         return [(PASS, f"{config.MAX_CALLS} is within the hard bound of {HARD_MAX_CALLS}")]
     return [(PASS, f"{config.MAX_CALLS} not set: using the default of "
                    f"{config.DEFAULT_MAX_CALLS}")]
+
+
+def check_budget(environ, var, parse, default):
+    try:
+        parse(environ)
+    except config.ConfigError as e:
+        return [(FAIL, str(e))]
+    if _is_set(environ, var):
+        return [(PASS, f"{var} is within the hard bound of {HARD_MAX_CALLS}")]
+    return [(PASS, f"{var} not set: using the default of {default}")]
+
+
+def check_run_gates(environ, registry):
+    """Whether run --live would pass its offline gates, failing gates by NAME only."""
+    failures = check_gates(environ, registry).failures
+    if failures:
+        return [(PASS, f"run --live is not armed; failing gates: {', '.join(failures)}")]
+    return [(WARN, "run --live is ARMED: every offline gate passes (it still needs a terminal "
+                   "and a typed yes)")]
 
 
 def check_dry_run(settings, problem=None):
@@ -215,6 +235,10 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_python(version_info),
         *check_provider(environ, registry, settings),
         *check_max_calls(environ),
+        *check_budget(environ, config.PROVIDER_MAX_CALLS, config.parse_provider_max_calls,
+                      config.DEFAULT_PROVIDER_MAX_CALLS),
+        *check_budget(environ, config.SHEETS_MAX_CALLS, config.parse_sheets_max_calls,
+                      config.DEFAULT_SHEETS_MAX_CALLS),
         *check_dry_run(settings, dry_run_problem),
         *check_live_armed(environ, settings),
         *check_optional(environ, config.SHEET_ID, config.parse_sheet_id,
@@ -227,6 +251,7 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_suppression(environ),
         *check_templates(),
         *check_signal_file(environ),
+        *check_run_gates(environ, registry),
     ]
 
 
