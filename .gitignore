@@ -1,0 +1,18 @@
+# secrets and credentials
+.env
+.env.*
+*.key
+*.pem
+credentials*.json
+.secrets/
+
+# local data
+*.sqlite
+*.sqlite3
+out/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
