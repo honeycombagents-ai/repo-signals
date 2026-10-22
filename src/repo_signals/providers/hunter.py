@@ -5,6 +5,11 @@ synthetic people and says so on one line. A live lookup reads HUNTER_API_KEY
 from the environment, charges the CallBudget it was given BEFORE the request,
 sends the key in a header (never in the URL) and maps every failure to a
 code-only ProviderError. It never sleeps or retries.
+
+Hunter has no title parameter, so titles are filtered here: a case-insensitive substring match
+on the position. "CTO" matches "Co-founder & CTO" but not "Chief Technology Officer". A record
+without a name or a position, or filtered out by title, is counted in ``last_dropped`` (code
+to count, reset on every lookup) and never logged.
 """
 import os
 import re
@@ -22,7 +27,8 @@ from .fake import FakeProvider
 # for email, position, first and last name and confidence. Still unchecked: the largest
 # allowed limit, the seniority and department filters, the score range, the error status
 # codes and Retry-After, the error body and error ids, the credits-remaining field, and how
-# many credits one search costs.
+# many credits one search costs. Hunter has no title parameter: titles are matched here as a
+# case-insensitive substring of FIELD_POSITION, so "CTO" does not match "Chief Technology Officer".
 # verify against Hunter's current API documentation before first live use.
 API_KEY_ENV = "HUNTER_API_KEY"
 API_HOST = "api.hunter.io"
@@ -133,6 +139,7 @@ class HunterProvider:
         self.seniority = seniority
         self.department = department
         self.credits_remaining: int | None = None
+        self.last_dropped: dict[str, int] = {}
         self._budget = budget
         self._http = http
         self._environ = environ
@@ -152,6 +159,7 @@ class HunterProvider:
 
     def find_people(self, company_domain: str, titles: tuple[str, ...],
                     limit: int) -> list[Person]:
+        self.last_dropped = {}
         if not isinstance(company_domain, str) or not _DOMAIN_RE.fullmatch(company_domain):
             raise ValueError("company_domain must be a domain name")
         if not isinstance(titles, tuple) or not all(isinstance(t, str) and t.strip() for t in titles):
@@ -201,6 +209,9 @@ class HunterProvider:
                 self.credits_remaining = n
                 return
 
+    def _drop(self, code):
+        self.last_dropped[code] = self.last_dropped.get(code, 0) + 1
+
     def _parse(self, data, company_domain, titles, limit):
         emails = _get_path(data, (RESP_DATA, RESP_EMAILS))
         if not isinstance(emails, list) or not all(isinstance(e, dict) for e in emails):
@@ -214,9 +225,14 @@ class HunterProvider:
             name = " ".join(p for p in (_text(entry.get(FIELD_FIRST_NAME)),
                                         _text(entry.get(FIELD_LAST_NAME))) if p)
             position = _text(entry.get(FIELD_POSITION))
-            if not _usable_email(email) or not name or not position:
+            if not _usable_email(email):
                 continue
+            if not name or not position:
+                self._drop("missing_name" if not name else "missing_title")
+                continue
+            # Case-insensitive substring match on the position: Hunter cannot filter by title.
             if wanted and not any(w in position.casefold() for w in wanted):
+                self._drop("filtered_by_title")
                 continue
             people.append(Person(name=name, email=email, title=position,
                                  company_domain=company_domain, source=self.name,

@@ -56,6 +56,10 @@ Apollo's people search returns names and titles but, per Apollo's documentation,
 addresses. In search-only mode Apollo rows therefore normally have no email. Emails need a
 separate, credit-spending enrichment call, which is not implemented.
 
+In practice the search gives you **first names and titles**. A live check on 2026-10-22 showed
+that it hides last names and returns only a `has_email` flag: no email address and no email
+status. So an Apollo row normally has a first name, a title and no email.
+
 A person whose email is missing, empty or a locked placeholder is still returned, with
 `email=None` and `confidence` 0.0, so a reviewer can see the name and title. Adding reveal would
 need an explicit opt-in setting and its own separate budget. Neither exists in v1.
@@ -89,9 +93,13 @@ ever added, it must:
   an email status listed in `NO_ADDRESS_EMAIL_STATUSES`.
 - `confidence` comes from the email status, using `EMAIL_STATUS_CONFIDENCE`. It is 0.0 when
   there is no usable address or the status is unknown.
-- People without a name or a title are skipped.
-- When titles are given, they are sent with the search. A returned person is kept only if one of
-  the requested titles appears in their title, ignoring case.
+- People without a name or a title are skipped and counted, never logged. After each lookup,
+  `provider.last_dropped` holds the counts by code (`missing_name`, `missing_title`), and
+  `repo-signals run` prints them as one line per domain, for example
+  `people dropped for example.com: missing_title 1`.
+- When titles are given, they are sent with the search as `person_titles`, and Apollo filters
+  by title on its side. The provider does not filter titles again: Apollo matches "CEO" to
+  "Chief Executive Officer", and a plain text match would throw that person away.
 - At most `limit` people come back. The request asks for at most 100 per page and only the first
   page.
 
@@ -130,35 +138,42 @@ body.
   Repo Signals never sends email. A person reviews and sends every draft.
 - This is not legal advice.
 
-## Unverified API details
+## Checked and unchecked API details
 
-The endpoint and the parameter, header and field names come from general knowledge. **They have
-not been checked against Apollo's documentation.** They all sit in one constants block at the
-top of `providers/apollo.py`, marked "verify against Apollo's current API documentation before
-first live use". The tests use synthetic JSON built to the same assumed shape, so passing tests
-do not show that the assumptions are right.
+The endpoint and the parameter, header and field names first came from general knowledge. Some
+of them were checked live against a real Apollo account on 2026-10-22. The rest are still
+unchecked. They all sit in one constants block at the top of `providers/apollo.py`, marked
+"verify against Apollo's current API documentation before first live use". The tests use
+synthetic JSON built to the assumed shape, so passing tests do not show that the assumptions are
+right.
 
-Before the first live call, check each of these:
+Checked live on 2026-10-22:
 
-- [ ] `PEOPLE_SEARCH_URL`: the host, path and version of the people-search endpoint (currently
-      `/api/v1/mixed_people/api_search`), and that it takes a POST with a JSON body
-- [ ] that the people search returns names and titles but **no email addresses**, so search-only
-      rows normally have no email
+- [x] `PEOPLE_SEARCH_URL`: the `/api/v1/mixed_people/api_search` path, with a POST and a JSON body
+- [x] `API_KEY_HEADER`: the key is accepted in the `x-api-key` header, out of the URL and the body
+- [x] `BODY_DOMAINS`, `BODY_TITLES`, `BODY_PER_PAGE`: the body fields
+      `q_organization_domains_list`, `person_titles` and `per_page`
+- [x] `RESP_PEOPLE`: the people list sits under the `people` key
+- [x] `FIELD_FIRST_NAME`, `FIELD_TITLE`: each person carries `first_name` and a title
+- [x] that the search returns **no email addresses**: it hides last names and returns only a
+      `has_email` flag, with no email and no email status
+
+Still unchecked, so check each of these before relying on it:
+
+- [ ] what `has_email` means, and whether it costs anything to act on
+- [ ] `MAX_PER_PAGE`: the largest allowed `per_page`
+- [ ] `BODY_PAGE`: the page parameter
 - [ ] that this search endpoint **does not spend credits or reveal emails** on your plan. If it
       does, do not use it until there is an opt-in setting and a separate budget.
-- [ ] `API_KEY_HEADER`: that the key can be sent as an `X-Api-Key` header, keeping it out of the
-      URL and the body
-- [ ] `BODY_DOMAINS`, `BODY_TITLES`, `BODY_PER_PAGE`, `BODY_PAGE`, `MAX_PER_PAGE`
-- [ ] `RESP_PEOPLE`: where the list of people sits in the response
-- [ ] `FIELD_NAME`, `FIELD_FIRST_NAME`, `FIELD_LAST_NAME`, `FIELD_TITLE`
-- [ ] `FIELD_EMAIL`, `FIELD_EMAIL_STATUS`, and what a locked email looks like:
-      `LOCKED_EMAIL_LOCAL_PARTS`, `NO_ADDRESS_EMAIL_STATUSES`
-- [ ] `EMAIL_STATUS_CONFIDENCE`: the email status values and what each one means
-- [ ] the status codes for an auth failure, a rate limit and an exhausted plan, and whether
-      `Retry-After` is sent
-- [ ] `RESP_ERROR_CODE`, `PLAN_EXHAUSTED_ERROR_CODES`: the error body and the codes for an
+- [ ] `RESP_ERROR_CODE`, `PLAN_EXHAUSTED_ERROR_CODES`: the error body and the error ids for an
       exhausted plan
-- [ ] how many credits one search costs, so you can size `REPO_SIGNALS_MAX_CALLS`
+- [ ] the status codes for an auth failure, a rate limit and an exhausted plan, and the
+      `Retry-After` behaviour
+- [ ] `FIELD_NAME`, `FIELD_LAST_NAME`, `FIELD_EMAIL`, `FIELD_EMAIL_STATUS`,
+      `LOCKED_EMAIL_LOCAL_PARTS`, `NO_ADDRESS_EMAIL_STATUSES`, `EMAIL_STATUS_CONFIDENCE`: these
+      fields were not in the search results checked live, so they only matter if Apollo starts
+      sending them
+- [ ] how many credits one search costs, so you can size `REPO_SIGNALS_PROVIDER_MAX_CALLS`
 
 A synthetic response in the assumed shape (made up, not captured from Apollo):
 

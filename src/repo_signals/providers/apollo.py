@@ -11,6 +11,11 @@ people and says so on one line. A live lookup reads APOLLO_API_KEY from the envi
 charges the CallBudget it was given BEFORE the request, sends the key in a header (never in
 the URL or the body) and maps every failure to a code-only ProviderError. It never sleeps or
 retries.
+
+Titles are filtered by Apollo, server-side, through ``person_titles``. There is no client-side
+title filter: Apollo matches "CEO" to "Chief Executive Officer", a substring test would not.
+A record without a name or a title is counted in ``last_dropped`` (code to count, reset on
+every lookup) and never logged.
 """
 import os
 import re
@@ -23,7 +28,11 @@ from .base import ProviderError
 from .fake import FakeProvider
 
 # --- Apollo API details ------------------------------------------------------------------
-# UNVERIFIED general knowledge, not checked against Apollo's documentation:
+# Checked against a real Apollo account on 2026-10-22: the api_search path, the x-api-key
+# header, the body fields q_organization_domains_list, person_titles and per_page, the people
+# key, and the first_name and title fields. Search hides last names and returns only a
+# has_email flag, with no email and no email_status. Still unchecked: what has_email means,
+# the largest per_page, the error ids, and the Retry-After behaviour.
 # verify against Apollo's current API documentation before first live use.
 API_KEY_ENV = "APOLLO_API_KEY"
 API_HOST = "api.apollo.io"
@@ -113,6 +122,7 @@ class ApolloProvider:
         if not dry_run and budget is None:
             raise ValueError("live mode needs a CallBudget")
         self.dry_run = dry_run
+        self.last_dropped: dict[str, int] = {}
         self._budget = budget
         self._http = http
         self._environ = environ
@@ -130,6 +140,7 @@ class ApolloProvider:
 
     def find_people(self, company_domain: str, titles: tuple[str, ...],
                     limit: int) -> list[Person]:
+        self.last_dropped = {}
         if not isinstance(company_domain, str) or not _DOMAIN_RE.fullmatch(company_domain):
             raise ValueError("company_domain must be a domain name")
         if not isinstance(titles, tuple) or not all(isinstance(t, str) and t.strip() for t in titles):
@@ -171,11 +182,13 @@ class ApolloProvider:
             self._http = http_mod.HttpClient((API_HOST,))
         return self._http
 
+    def _drop(self, code):
+        self.last_dropped[code] = self.last_dropped.get(code, 0) + 1
+
     def _parse(self, data, company_domain, titles, limit):
         rows = data.get(RESP_PEOPLE) if isinstance(data, dict) else None
         if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
             raise ProviderError("unexpected_shape")
-        wanted = tuple(t.strip().casefold() for t in titles)
         people = []
         for row in rows:
             if len(people) >= limit:
@@ -184,8 +197,7 @@ class ApolloProvider:
                 p for p in (_text(row.get(FIELD_FIRST_NAME)), _text(row.get(FIELD_LAST_NAME))) if p)
             title = _text(row.get(FIELD_TITLE))
             if not name or not title:
-                continue
-            if wanted and not any(w in title.casefold() for w in wanted):
+                self._drop("missing_name" if not name else "missing_title")
                 continue
             status = row.get(FIELD_EMAIL_STATUS)
             status = status.strip().lower() if isinstance(status, str) else None

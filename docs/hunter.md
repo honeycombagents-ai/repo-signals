@@ -64,7 +64,13 @@ people = provider.find_people("example.com", ("CTO", "VP Engineering"), 5)
   score becomes `0.0`.
 - Entries without a name, a position or a well-formed address are skipped.
 - When titles are given, a person is kept if any requested title appears in their position,
-  ignoring case. For example, `cto` matches `Co-founder & CTO`.
+  ignoring case. Hunter has no title parameter, so this match runs in the provider, and it is a
+  plain substring match: `cto` matches `Co-founder & CTO`, but "CTO" will not match "Chief
+  Technology Officer". Use the words the provider returns in its positions.
+- People without a name or a position, and people filtered out by title, are counted, never
+  logged. After each lookup, `provider.last_dropped` holds the counts by code (`missing_name`,
+  `missing_title`, `filtered_by_title`), and `repo-signals run` prints them as one line per
+  domain, for example `people dropped for example.com: filtered_by_title 2`.
 - At most `limit` people come back. The request asks for at most 100.
 
 ## Errors

@@ -12,6 +12,7 @@ Rows are only ever appended: a person already in the sheet is skipped and never 
 Nothing is ever sent by email.
 """
 import os
+import re
 import secrets
 import sys
 from collections import Counter
@@ -59,6 +60,7 @@ SYNTHETIC_SENDER = Sender("Sample Sender", "Engineer", "Example Org",
                           "Reply stop and you will not hear from us again.")
 _EMAIL_DRAFT = COLUMNS.index("email_draft")
 _EMAIL = COLUMNS.index("email")
+_DROP_CODE_RE = re.compile(r"[a-z][a-z0-9_]{0,39}")
 
 
 def build_live_provider(name, budget, registry):
@@ -79,8 +81,27 @@ def _domain_suppressed(suppression, domain):
     return any(domain == d or domain.endswith("." + d) for d in email_domains)
 
 
-def people_stage(evidence_by_domain, provider, self_charging, budget, titles, suppression):
-    """((person, evidence) list, Counter of codes, stop code or None). Never raises."""
+def _dropped_line(domain, provider):
+    """``people dropped for DOMAIN: code n, ...`` from ``provider.last_dropped``, or None.
+
+    Code-only: a key that is not a lowercase code, or a count that is not a positive whole
+    number, is ignored, so no name, title or email can reach the line.
+    """
+    dropped = getattr(provider, "last_dropped", None)
+    if not isinstance(dropped, dict):
+        return None
+    parts = [f"{code} {n}" for code, n in sorted(dropped.items(), key=str)
+             if isinstance(code, str) and _DROP_CODE_RE.fullmatch(code)
+             and isinstance(n, int) and not isinstance(n, bool) and n > 0]
+    return f"people dropped for {domain}: {', '.join(parts)}" if parts else None
+
+
+def people_stage(evidence_by_domain, provider, self_charging, budget, titles, suppression, *,
+                 out=None):
+    """((person, evidence) list, Counter of codes, stop code or None). Never raises.
+
+    After each lookup, a provider's ``last_dropped`` counts are printed as one code-only line.
+    """
     people, counts, stop = [], Counter(), None
     for domain, items in evidence_by_domain.items():
         if not items:
@@ -114,6 +135,9 @@ def people_stage(evidence_by_domain, provider, self_charging, budget, titles, su
             continue
         counts["looked_up"] += 1
         people += [(p, items) for p in found[:PEOPLE_LIMIT]]
+        line = _dropped_line(domain, provider)
+        if line is not None:
+            print(line, file=out if out is not None else sys.stdout)
     return people, counts, stop
 
 
@@ -269,7 +293,7 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
         provider, self_charging = factory(settings.provider, provider_budget, registry)
         people, people_counts, stop = people_stage(result.evidence_by_domain, provider,
                                                    self_charging, provider_budget, signal.titles,
-                                                   gates.suppression)
+                                                   gates.suppression, out=out)
         failures = sorted(c for c in people_counts if c not in PEOPLE_SKIP_CODES)
         if stop is not None:
             partial.append(f"people: {stop}")
