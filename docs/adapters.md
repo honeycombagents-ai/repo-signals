@@ -44,6 +44,21 @@ An adapter is any object with these three members (see `src/repo_signals/provide
 5. **Read the provider's terms.** Using a provider's data is governed by its terms, which are yours
    to follow.
 
+## Adapting to another enrichment provider
+
+If you use an enrichment provider other than Hunter or Apollo, write an adapter for it.
+[`providers/hunter.py`](../src/repo_signals/providers/hunter.py) is the worked example to copy.
+A live adapter should:
+
+1. implement the `PeopleProvider` protocol (`name`, `required_env`, `find_people`),
+2. take a `CallBudget` in its constructor and charge it before every request,
+3. keep dry run offline, with no network call at all,
+4. raise code-only `ProviderError`s,
+5. send the API key in a request header, never in the URL or the body,
+6. keep the endpoint, parameter and field names in one constants block, marked as unverified
+   until you have checked them against the provider's documentation, and
+7. be tested with a fake transport and synthetic data, never against the live API.
+
 ## A synthetic example
 
 This adapter is synthetic. It returns a fixed list and calls nothing. A real adapter would call its

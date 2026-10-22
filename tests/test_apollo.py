@@ -520,6 +520,19 @@ class Source(unittest.TestCase):
                 text = " ".join((ROOT / name).read_text().split())
                 self.assertIn(note, text)
 
+    def test_audience_and_email_opt_in_documented(self):
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("\n## Who this is for\n", readme)
+        doc = (ROOT / "docs/apollo.md").read_text()
+        heading = "\n## Emails need an opt-in and their own budget\n"
+        self.assertIn(heading, doc)
+        section = doc.split(heading, 1)[1].split("\n## ", 1)[0]
+        self.assertIn("own call budget", " ".join(section.split()))
+        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
+        for name in ("README.md", "docs/apollo.md", "docs/adapters.md", "tests/test_apollo.py"):
+            with self.subTest(file=name):
+                self.assertIsNone(word.search((ROOT / name).read_text()))
+
     def test_forbidden_keyword_absent_from_new_files(self):
         word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
         for name in self.NEW_FILES:

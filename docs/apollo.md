@@ -60,6 +60,17 @@ A person whose email is missing, empty or a locked placeholder is still returned
 `email=None` and `confidence` 0.0, so a reviewer can see the name and title. Adding reveal would
 need an explicit opt-in setting and its own separate budget. Neither exists in v1.
 
+## Emails need an opt-in and their own budget
+
+The people search returns no emails. Getting an email for a person needs a separate enrichment
+call, and that call spends Apollo credits. **This is not implemented in v1.** If that step is
+ever added, it must:
+
+- be opt-in: off by default, and turned on only by an explicit setting,
+- have its own call budget, separate from the search budget,
+- show its maximum credit use in the live plan, before the typed "yes", and
+- never run in a dry run.
+
 ## The call budget
 
 - Every live lookup is **one** people-search request. The provider charges `budget.consume(1)`

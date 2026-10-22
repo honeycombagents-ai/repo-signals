@@ -15,6 +15,16 @@ For each company it finds, it:
 
 A human reviews every draft and sends it. Repo Signals itself never sends anything.
 
+## Who this is for
+
+Repo Signals is built so that someone who already uses Hunter or Apollo can deploy it quickly.
+
+- **Hunter** is the provider that returns email addresses today.
+- **Apollo** works for names and titles. Getting Apollo emails needs an opt-in enrichment step,
+  and that step is not built.
+- **Another enrichment provider?** Write a small adapter for it. See
+  [docs/adapters.md](docs/adapters.md).
+
 ## Status and quick start
 
 **Early. Dry run by default.** Nothing makes a network call unless you turn dry run off, and every
