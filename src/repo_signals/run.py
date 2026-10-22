@@ -15,10 +15,10 @@ import os
 import secrets
 import sys
 from collections import Counter
-from datetime import date
 from types import SimpleNamespace
 
 from . import config
+from .clock import utc_today
 from .budget import BudgetExceeded, CallBudget
 from .collector.live import CONFIRM_WORD, _is_terminal
 from .collector.github_api import GitHubClient
@@ -249,7 +249,7 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
 
     client = GitHubClient(github_http, github_budget, settings.github_token, dry_run=False)
     result = collect(signal, client, gates.suppression, settings.max_calls,
-                     today if today is not None else date.today())
+                     today if today is not None else utc_today())
     for line in summarize(result):
         print(line, file=out)
     for domain, items in result.evidence_by_domain.items():

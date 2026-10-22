@@ -38,6 +38,8 @@ Each must be a whole number from 1 to 500. When a stage fails or hits its cap, t
 later stages run on what exists, and the run ends `partial` with the stage and code, for example
 `run: partial (people: budget_exhausted)`.
 
+Dates are compared in UTC: "today" is the UTC date, matching GitHub's `pushed_at` times.
+
 At the end the run prints the requests actually made, from each budget:
 `requests made: github 4 of 10, provider 2 of 5, sheets 4 of 10`. The collect summary also shows
 the GitHub total split into matching calls and searches.

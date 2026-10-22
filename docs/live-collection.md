@@ -102,6 +102,8 @@ evidence for example.com:
 
 Nothing else from GitHub is printed: no descriptions, no websites, no individuals.
 
+Dates are compared in UTC: "today" is the UTC date, matching GitHub's `pushed_at` times.
+
 ## Exit codes
 
 | code | meaning |

@@ -11,9 +11,9 @@ is written to disk and nothing is sent anywhere else.
 """
 import re
 import sys
-from datetime import date
 
 from .. import config
+from ..clock import utc_today
 from ..budget import CallBudget
 from ..drafting.base import DraftError
 from ..drafting.suppression import suppression_from_env
@@ -139,7 +139,7 @@ def run_live(environ, stdin=None, out=None, err=None, http=None, today=None) -> 
 
     client = GitHubClient(http, CallBudget(settings.max_calls), token, dry_run=False)
     result = collect(signal, client, suppression, settings.max_calls,
-                     today if today is not None else date.today())
+                     today if today is not None else utc_today())
     for line in summarize(result):
         print(line, file=out)
     for domain, items in result.evidence_by_domain.items():
