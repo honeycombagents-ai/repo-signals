@@ -511,6 +511,30 @@ class Source(unittest.TestCase):
             with self.subTest(file=name):
                 self.assertIsNone(word.search((root / name).read_text()))
 
+    def test_limit_checked_and_max_limit_unchecked(self):
+        root = Path(__file__).resolve().parent.parent
+        doc = (root / "docs/hunter.md").read_text()
+        checked = doc.split("Checked live on 2026-10-22", 1)[1].split("Still unchecked", 1)[0]
+        unchecked = doc.split("Still unchecked", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("- [x] `PARAM_LIMIT`", checked)
+        self.assertIn("- [x] `RESP_DATA`, `RESP_EMAILS`", checked)
+        self.assertNotIn("MAX_LIMIT", checked)
+        self.assertIn("- [ ] `MAX_LIMIT`", unchecked)
+        self.assertNotIn("PARAM_LIMIT", unchecked)
+        flat = " ".join(doc.split())
+        self.assertIn("In a live check on 2026-10-22 the credits-remaining value was not found at "
+                      "any path the code reads, so the tool shows no remaining credits.", flat)
+        self.assertIn("A domain search can spend one credit per call.", flat)
+        self.assertNotIn("Until the credits-remaining field is checked", flat)
+        # The newly checked values, pinned so a change has to update the docs as well.
+        self.assertEqual((hunter.PARAM_LIMIT, hunter.RESP_DATA, hunter.RESP_EMAILS),
+                         ("limit", "data", "emails"))
+        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
+        for name in ("src/repo_signals/providers/hunter.py", "docs/hunter.md",
+                     "tests/test_hunter.py"):
+            with self.subTest(file=name):
+                self.assertIsNone(word.search((root / name).read_text()))
+
     def test_import_order_independent(self):
         for first in ("repo_signals.http", "repo_signals.providers.hunter",
                       "repo_signals.providers", "repo_signals.doctor"):

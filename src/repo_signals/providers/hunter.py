@@ -18,9 +18,11 @@ from .fake import FakeProvider
 
 # --- Hunter API details ------------------------------------------------------------------
 # Checked against a real Hunter account on 2026-10-22: the endpoint, the X-API-KEY header,
-# the domain parameter, and the response fields for email, position, first and last name
-# and confidence. Still unchecked: the seniority and department filters, the
-# credits-remaining field and the error ids.
+# the domain and limit parameters, the data and emails wrapper keys, and the response fields
+# for email, position, first and last name and confidence. Still unchecked: the largest
+# allowed limit, the seniority and department filters, the score range, the error status
+# codes and Retry-After, the error body and error ids, the credits-remaining field, and how
+# many credits one search costs.
 # verify against Hunter's current API documentation before first live use.
 API_KEY_ENV = "HUNTER_API_KEY"
 API_HOST = "api.hunter.io"
