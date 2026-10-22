@@ -5,6 +5,8 @@
 means and its error ids are not checked live. Other API details are listed as unchecked in
 [docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md).
 
+What changed in each release: [CHANGELOG.md](CHANGELOG.md).
+
 ## What it is
 
 Repo Signals looks at the public repository activity of companies you choose. It works with
