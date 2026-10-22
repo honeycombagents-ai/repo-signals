@@ -1,13 +1,19 @@
 # Repo Signals
 
-**Status: scaffold, not usable yet.** This repository has no product code yet: only the license,
-the security policy and a scanner that keeps secrets and stray identifiers out of the tree.
+**Status: early release, dry run by default.** Hunter's domain search was checked live on
+2026-10-22. Apollo's people-search path has been updated but not checked live. Other API details
+are listed as unchecked in [docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md).
 
 ## What it is
 
-Repo Signals finds companies by their public repository activity. It works with GitHub.
+Repo Signals looks at the public repository activity of companies you choose. It works with
+GitHub.
 
-For each company it finds, it:
+You list the target companies in a signal file, and Repo Signals finds matching public GitHub
+repositories for them. The company domains in the signal file are sent to the people provider you
+choose, under your own key.
+
+For each company with matching activity, it:
 
 1. looks up people through **your own** contact-provider key,
 2. fills a Google Sheet with the companies, the people and the evidence, and
@@ -25,48 +31,42 @@ Repo Signals is built so that someone who already uses Hunter or Apollo can depl
 - **Another enrichment provider?** Write a small adapter for it. See
   [docs/adapters.md](docs/adapters.md).
 
-## Status and quick start
+## What it does
 
-**Early. Dry run by default.** Nothing makes a network call unless you turn dry run off, and every
-live command is gated (`collect --live` and `run --live` also need a typed "yes"). What exists
-today:
+Nothing makes a network call unless you turn dry run off, and every live command is gated
+(`collect --live` and `run --live` also need a typed "yes").
 
-- the people-provider interface,
-- a built-in `fake` provider that returns synthetic people on `example.invalid`,
-- a hard call budget,
-- settings read from environment variables, and
-- an offline `doctor` command.
+- **collect**: turns a signal file into GitHub evidence. `collect --dry-run` validates the file and
+  prints the plan with no network call. See [docs/signal-file.md](docs/signal-file.md) and
+  [docs/live-collection.md](docs/live-collection.md).
+- **people**: looks up people through Hunter.io or Apollo.io behind a hard call budget. Both are
+  dry runs by default, and live use is reachable only through the gated `run --live`. The built-in
+  `fake` provider returns synthetic people on `example.invalid`. See [docs/hunter.md](docs/hunter.md)
+  and [docs/apollo.md](docs/apollo.md).
+- **draft**: fills the sheet's `email_draft` column from plain-text templates, grounded on public
+  evidence, with your postal address and opt-out text. A suppression list is honoured. Nothing is
+  ever sent. See [docs/drafting.md](docs/drafting.md).
+- **sheet**: appends people to a Google Sheet for review. Dry run by default, and it never deletes,
+  clears or overwrites anything. See [docs/google-sheets.md](docs/google-sheets.md).
+- **run**: chains collect, people, draft and sheet, with a separate call budget for each service.
+  Dry run by default. Nothing is ever sent by email. See [docs/run.md](docs/run.md).
+- **init**: creates starter config files, offline, and never asks for a secret. See
+  [docs/deployment.md](docs/deployment.md).
+- **doctor**: checks your settings offline and prints PASS, WARN or FAIL per line. See
+  [docs/deployment.md](docs/deployment.md).
 
-Hunter.io and Apollo.io adapters exist behind the call budget. Both are dry runs by default, and
-live use is reachable only through the gated `repo-signals run --live` (see
-[docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
-implemented.
-Apollo's people search returns names and titles but, per Apollo's documentation, not email
-addresses. In search-only mode Apollo rows therefore normally have no email. Emails need a
-separate, credit-spending enrichment call, which is not implemented.
+The Apollo adapter searches only: email reveal is not implemented. Apollo's people search
+returns names and titles but, per Apollo's documentation, not email addresses. In search-only mode
+Apollo rows therefore normally have no email. Emails need a separate, credit-spending enrichment
+call, which is not implemented.
 
-A Google Sheet writer appends people for review. It runs as a dry run by default, and it never
-deletes, clears or overwrites anything (see [docs/google-sheets.md](docs/google-sheets.md)).
-
-An email drafter fills the sheet's `email_draft` column from plain-text templates. Every draft
-is grounded on public evidence and includes your postal address and opt-out text. A suppression
-list is honoured. Nothing is ever sent (see [docs/drafting.md](docs/drafting.md)).
-
-A GitHub signal collector turns a signal file into evidence (see
-[docs/collector-design.md](docs/collector-design.md)). `repo-signals collect --dry-run` validates
-the file and prints the plan with no network call (see [docs/signal-file.md](docs/signal-file.md)).
-Live collection is gated: dry run must be off, and `repo-signals collect --live` asks you to type
-"yes" every time (see [docs/live-collection.md](docs/live-collection.md)).
-
-`repo-signals run` chains it all: collect, find people, draft, and append rows to the sheet, with
-a separate call budget for each service. It is a dry run by default, and `run --live` has the
-same gates and typed "yes" (see [docs/run.md](docs/run.md)). Nothing is ever sent by email.
-
-To set up and run it on your own machine, see [docs/deployment.md](docs/deployment.md).
+## Quick start
 
 ```sh
-python3 -m pip install -e .       # Python 3.12 or newer
-repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
+python3 -m pip install -e .                    # Python 3.12 or newer
+repo-signals init --dir ~/repo-signals-config  # starter files, offline
+repo-signals doctor                            # offline checks: PASS, WARN or FAIL per line
+repo-signals run                               # dry run: no network, nothing written
 ```
 
 Without installing, you can run it from the repo root:
@@ -74,6 +74,10 @@ Without installing, you can run it from the repo root:
 ```sh
 PYTHONPATH=src python3 -m repo_signals doctor
 ```
+
+Before your first live run, work through the
+[throwaway-first checklist](docs/deployment.md#the-throwaway-first-checklist) in
+[docs/deployment.md](docs/deployment.md).
 
 Settings come from environment variables only:
 
@@ -100,8 +104,9 @@ To add your own provider, see [docs/adapters.md](docs/adapters.md).
 
 - **Dry run first.** A dry run makes no paid calls and writes nothing.
 - **Hard call caps.** Every provider has a per-run limit. You can raise a limit but not remove it.
-- **Keys only from environment variables.** No key is read from a config file or the command
-  line, and keys are never logged.
+- **Keys from the environment.** Keys come from environment variables, or from a key
+  file whose path comes from an environment variable. No key is read from the command line, and
+  keys are never logged.
 - **It never sends email.** It only writes drafts for a person to review.
 
 ## Your responsibilities

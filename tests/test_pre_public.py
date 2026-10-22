@@ -67,5 +67,24 @@ class DraftingDocs(unittest.TestCase):
                 self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
+class ReadmeIntro(unittest.TestCase):
+    def test_status_signal_file_and_never_sends(self):
+        text = (ROOT / "README.md").read_text()
+        flat = " ".join(text.split())
+        self.assertNotIn("scaffold, not usable yet", text)
+        self.assertIn("signal file", text)
+        self.assertIn("You list the target companies in a signal file, and Repo Signals finds "
+                      "matching public GitHub repositories for them. The company domains in the "
+                      "signal file are sent to the people provider you choose, under your own "
+                      "key.", flat)
+        status = flat.split("## What it is", 1)[0]
+        self.assertIn("Hunter's domain search was checked live on 2026-10-22.", status)
+        self.assertIn("not checked live", status)
+        self.assertTrue("never sends" in text or "Nothing is ever sent" in text)
+        self.assertIn("Repo Signals itself never sends anything.", flat)
+        self.assertIsNone(re.search("lam" + "bda", text + Path(__file__).read_text(),
+                                    re.IGNORECASE))
+
+
 if __name__ == "__main__":
     unittest.main()
