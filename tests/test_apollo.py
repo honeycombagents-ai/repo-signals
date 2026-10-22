@@ -506,6 +506,20 @@ class Source(unittest.TestCase):
                       "LOCKED_EMAIL_LOCAL_PARTS", "PLAN_EXHAUSTED_ERROR_CODES"):
             self.assertIn(const + " =", head)
 
+    def test_people_search_url_is_the_api_search_path(self):
+        self.assertTrue(apollo.PEOPLE_SEARCH_URL.startswith("https://" + apollo.API_HOST + "/"))
+        self.assertTrue(apollo.PEOPLE_SEARCH_URL.endswith("/mixed_people/api_search"))
+
+    def test_docs_state_search_returns_no_email(self):
+        note = ("Apollo's people search returns names and titles but, per Apollo's documentation, "
+                "not email addresses. In search-only mode Apollo rows therefore normally have no "
+                "email. Emails need a separate, credit-spending enrichment call, which is not "
+                "implemented.")
+        for name in ("docs/apollo.md", "README.md"):
+            with self.subTest(file=name):
+                text = " ".join((ROOT / name).read_text().split())
+                self.assertIn(note, text)
+
     def test_forbidden_keyword_absent_from_new_files(self):
         word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
         for name in self.NEW_FILES:

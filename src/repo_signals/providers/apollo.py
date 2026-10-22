@@ -27,7 +27,7 @@ from .fake import FakeProvider
 # verify against Apollo's current API documentation before first live use.
 API_KEY_ENV = "APOLLO_API_KEY"
 API_HOST = "api.apollo.io"
-PEOPLE_SEARCH_URL = "https://api.apollo.io/api/v1/mixed_people/search"  # POST, JSON body
+PEOPLE_SEARCH_URL = "https://api.apollo.io/api/v1/mixed_people/api_search"  # POST, JSON body
 API_KEY_HEADER = "X-Api-Key"
 BODY_DOMAINS = "q_organization_domains_list"   # list of domains
 BODY_TITLES = "person_titles"                  # list of titles, sent only when titles are given

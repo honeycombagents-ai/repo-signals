@@ -52,6 +52,10 @@ people = provider.find_people("example.com", ("CTO", "VP Engineering"), 5)
 The provider makes exactly one request per lookup: the people search. **It never calls an
 email-reveal, enrichment or other credit-spending endpoint.** This is intentional.
 
+Apollo's people search returns names and titles but, per Apollo's documentation, not email
+addresses. In search-only mode Apollo rows therefore normally have no email. Emails need a
+separate, credit-spending enrichment call, which is not implemented.
+
 A person whose email is missing, empty or a locked placeholder is still returned, with
 `email=None` and `confidence` 0.0, so a reviewer can see the name and title. Adding reveal would
 need an explicit opt-in setting and its own separate budget. Neither exists in v1.
@@ -125,8 +129,10 @@ do not show that the assumptions are right.
 
 Before the first live call, check each of these:
 
-- [ ] `PEOPLE_SEARCH_URL`: the host, path and version of the people-search endpoint, and that it
-      takes a POST with a JSON body
+- [ ] `PEOPLE_SEARCH_URL`: the host, path and version of the people-search endpoint (currently
+      `/api/v1/mixed_people/api_search`), and that it takes a POST with a JSON body
+- [ ] that the people search returns names and titles but **no email addresses**, so search-only
+      rows normally have no email
 - [ ] that this search endpoint **does not spend credits or reveal emails** on your plan. If it
       does, do not use it until there is an opt-in setting and a separate budget.
 - [ ] `API_KEY_HEADER`: that the key can be sent as an `X-Api-Key` header, keeping it out of the

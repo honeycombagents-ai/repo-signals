@@ -31,6 +31,9 @@ Hunter.io and Apollo.io adapters exist behind the call budget. Both are dry runs
 live use is reachable only through the gated `repo-signals run --live` (see
 [docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md)). The Apollo adapter searches only: email reveal is not
 implemented.
+Apollo's people search returns names and titles but, per Apollo's documentation, not email
+addresses. In search-only mode Apollo rows therefore normally have no email. Emails need a
+separate, credit-spending enrichment call, which is not implemented.
 
 A Google Sheet writer appends people for review. It runs as a dry run by default, and it never
 deletes, clears or overwrites anything (see [docs/google-sheets.md](docs/google-sheets.md)).
