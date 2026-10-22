@@ -13,6 +13,8 @@ FAMILIES = {"ProviderError", "RateLimitedError", "SignalError", "PlanError", "Dr
 CODE_RE = re.compile(r"[a-z{][a-z0-9_{}]*\Z")
 DROP_TABLE = "## People-stage drop counts\n"
 CODE_TABLES = ("## Error codes\n", "## Drops and outcomes\n", DROP_TABLE)
+START_HERE = ("header_missing", "header_mismatch", "not_found", "token_rejected", "signing_failed",
+              "org_not_visible", "rate_limited")
 
 
 def _strings(node):
@@ -168,6 +170,52 @@ class SetupDocs(unittest.TestCase):
                     self.assertIsNone(re.search(r"<[A-Za-z][^<>\n]*>", block), block)
                     self.assertIsNone(re.search(r"(^|\s)#", block), block)
         self.assertIsNone(re.search("lam" + "bda", Path(__file__).read_text(), re.IGNORECASE))
+
+    def test_start_here_links_seven_rows(self):
+        text = TROUBLE.read_text()
+        self.assertLess(text.index("\n## Start here\n"), text.index("\n## Error codes\n"))
+        section = text.split("\n## Start here\n", 1)[1].split("\n## ", 1)[0]
+        links = re.findall(r"^- \[`([a-z_]+)`\]\(#([a-z_]+)\): \S", section, re.M)
+        self.assertEqual([code for code, _ in links], list(START_HERE))
+        errors = text.split("\n## Error codes\n", 1)[1].split("\n## ", 1)[0]
+        table = set(table_codes(("## Error codes\n",)))
+        for code, anchor in links:
+            with self.subTest(code=code):
+                self.assertEqual(code, anchor)
+                self.assertIn(code, table)
+                rows = [line for line in errors.splitlines() if line.startswith(f"| `{code}` |")]
+                self.assertEqual(len(rows), 1)
+                self.assertTrue(rows[0].endswith(f'<a id="{code}"></a> |'), rows[0])
+
+    def test_guide_first_run_fixes(self):
+        guide = GUIDE.read_text()
+        flat = " ".join(guide.split())
+        self.assertIn("The values you type must not contain double quotes or backslashes, or the "
+                      "file will not parse; the tool then refuses it with a code and nothing is "
+                      "requested.", flat)
+        self.assertIn("printf '%s\\n' \"$OWN_DOMAIN\" >> \"$CONFIG_DIR/suppression.txt\"\n", guide)
+        self.assertNotIn('echo "$OWN_DOMAIN"', guide)
+        self.assertIn("Run every step from here on in the same terminal window.", flat)
+        self.assertLess(flat.index("Run every step from here on in the same terminal window."),
+                        flat.index("## 3. Create the config folder"))
+        self.assertIn("Dry run stays off in this shell until the clean-up step", flat)
+        self.assertIn("`.gitignore` already ignores", flat)
+        doctor = guide.split("\n## 9. doctor\n", 1)[1].split("\n## ", 1)[0]
+        for line in ("PASS dry run is on: no paid calls, nothing written",
+                     "PASS live collection is not armed (needs dry run off and "
+                     "REPO_SIGNALS_SIGNAL_FILE set)",
+                     "PASS run --live is not armed; failing gates: REPO_SIGNALS_DRY_RUN",
+                     "WARN hunter: live use is not enabled until dry run is turned off"):
+            self.assertIn(line, doctor)
+        self.assertNotIn("warnings that dry run is on", flat)
+
+    def test_doctor_lines_in_the_guide_exist_in_src(self):
+        literals = " ".join(src_literals())
+        for fragment in ("dry run is on: no paid calls, nothing written",
+                         "live use is not enabled until dry run is turned off",
+                         "run --live is not armed; failing gates: ",
+                         "live collection is not armed (needs dry run off and "):
+            self.assertIn(fragment, literals)
 
     def test_guide_safety_notes(self):
         guide = " ".join(GUIDE.read_text().split())

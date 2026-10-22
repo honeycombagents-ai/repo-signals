@@ -11,17 +11,37 @@ too, for example `run: partial (people: budget_exhausted)`.
 
 For a first setup, see [setup-guide.md](setup-guide.md).
 
+## Start here
+
+These are the codes most often seen in a first run, and what each one usually means then:
+
+- [`header_missing`](#header_missing): the sheet is not empty. It has data but no header row. Use
+  a new, empty sheet.
+- [`header_mismatch`](#header_mismatch): the sheet has someone else's header in its first row.
+  Use a new, empty sheet.
+- [`not_found`](#not_found): a GitHub organisation login in the signal file is wrong. A sheet
+  that is not shared with the service account shows up as `sheet_not_found` or `auth_failed`
+  instead.
+- [`token_rejected`](#token_rejected): GitHub refused your token (expired, revoked or mistyped),
+  or Google refused the service-account token (the key was deleted, or your clock is wrong).
+- [`signing_failed`](#signing_failed): openssl could not sign with the key file. The file is
+  incomplete or was edited: download a fresh key.
+- [`org_not_visible`](#org_not_visible): GitHub will not search that organisation. The login is
+  wrong, or the token belongs to an account that cannot see it, often a second `gh` account.
+- [`rate_limited`](#rate_limited): you hit GitHub's rate limit. Wait, or set
+  `REPO_SIGNALS_GITHUB_TOKEN` for higher limits.
+
 ## Error codes
 
 | code | what it means | what to check |
 |---|---|---|
 | `dry_run` | A live GitHub request was attempted while dry run is on. | Set `REPO_SIGNALS_DRY_RUN=false` in the shell where you run the live command, and only there. |
 | `budget_exhausted` | The call budget for this service ran out. The request was not sent. | Raise the cap for the stage the run names: `REPO_SIGNALS_MAX_CALLS` (GitHub), `REPO_SIGNALS_PROVIDER_MAX_CALLS` (people) or `REPO_SIGNALS_SHEETS_MAX_CALLS` (Google). Each is at most 500. |
-| `rate_limited` | The service said to slow down: GitHub answered 403 or 429, or reported 0 requests left; a provider or Google answered 429 with no usable `Retry-After`. The tool never waits or retries. | Wait and run again later. For GitHub, set `REPO_SIGNALS_GITHUB_TOKEN` for higher limits. `probe-org` shows the remaining count and reset time. |
+| `rate_limited` | The service said to slow down: GitHub answered 403 or 429, or reported 0 requests left; a provider or Google answered 429 with no usable `Retry-After`. The tool never waits or retries. | Wait and run again later. For GitHub, set `REPO_SIGNALS_GITHUB_TOKEN` for higher limits. `probe-org` shows the remaining count and reset time. <a id="rate_limited"></a> |
 | `retry_after_N` | A provider or Google answered 429 and asked you to wait N seconds (0 to 60). | Wait at least N seconds before running again. |
-| `token_rejected` | GitHub answered 401 for your token, or Google's token endpoint answered 400. | GitHub: the token is expired, revoked or mistyped; make a new one and set it with `read -rs`. Google: the key was deleted in the console, the key file is from another project, or your computer's clock is wrong. |
-| `not_found` | GitHub answered 404, usually for an organisation login that does not exist. | The `org` spelling in the signal file. `repo-signals probe-org` checks one login with one request. |
-| `org_not_visible` | GitHub refused to search inside that organisation (a 422 with the "cannot be searched" message). | The `org` name in the signal file, and whether your token can see that org. Check which account the token belongs to. |
+| `token_rejected` | GitHub answered 401 for your token, or Google's token endpoint answered 400. | GitHub: the token is expired, revoked or mistyped; make a new one and set it with `read -rs`. Google: the key was deleted in the console, the key file is from another project, or your computer's clock is wrong. <a id="token_rejected"></a> |
+| `not_found` | GitHub answered 404, usually for an organisation login that does not exist. | The `org` spelling in the signal file. `repo-signals probe-org` checks one login with one request. <a id="not_found"></a> |
+| `org_not_visible` | GitHub refused to search inside that organisation (a 422 with the "cannot be searched" message). | The `org` name in the signal file, and whether your token can see that org. Check which account the token belongs to. <a id="org_not_visible"></a> |
 | `bad_query` | GitHub refused a search with a 422 for any other reason. | The term and `language` in the signal file. |
 | `server_error` | The service answered with a 5xx error. | Nothing on your side. Try again later. |
 | `unexpected_status` | The service answered with a status the tool does not expect. | Try again later. If it repeats, the API may have changed: see the unverified constants in the provider's doc. |
@@ -93,11 +113,11 @@ For a first setup, see [setup-guide.md](setup-guide.md).
 | `credentials_malformed` | The key file is not a service-account JSON key. | Download a new JSON key for the service account. |
 | `budget_missing` | The sheet writer was started live without a call budget. | Only happens in your own code: pass a `CallBudget`. |
 | `openssl_not_found` | `openssl` is not on `PATH`. | Install openssl, or check `PATH` in the shell you run from. `openssl version` should work. |
-| `signing_failed` | openssl could not sign the token request. | The key file is complete and unedited. Download a fresh key if in doubt. |
+| `signing_failed` | openssl could not sign the token request. | The key file is complete and unedited. Download a fresh key if in doubt. <a id="signing_failed"></a> |
 | `signing_timeout` | openssl took too long to sign. | Try again. Check that nothing is blocking openssl. |
 | `sheet_not_found` | Google answered 404 for the sheet. | The sheet id, and that the sheet is shared with the service account email. |
-| `header_mismatch` | The sheet's first row is not the tool's header row. Nothing was written. | Use a new, empty sheet, or a sheet only this tool has written to. |
-| `header_missing` | The sheet has data but no header row. Nothing was written. | Use a new, empty sheet. |
+| `header_mismatch` | The sheet's first row is not the tool's header row. Nothing was written. | Use a new, empty sheet, or a sheet only this tool has written to. <a id="header_mismatch"></a> |
+| `header_missing` | The sheet has data but no header row. Nothing was written. | Use a new, empty sheet. <a id="header_missing"></a> |
 | `method_not_allowed` | The sheet client was asked for a method it never uses. | Report it as a bug. |
 | `bad_rows` | Rows for the sheet had the wrong number of columns. | Report it as a bug. |
 | `bad_range` | A sheet range was outside the tool's columns. | Report it as a bug. |

@@ -43,7 +43,9 @@ openssl version
 
 ## 2. Install
 
-From the folder that holds the repository, create a virtual environment and install into it:
+From the folder that holds the repository, create a virtual environment and install into it.
+The environment lives in `.venv` inside the repository folder, which this repository's
+`.gitignore` already ignores, so it is never committed:
 
 ```sh
 python3 -m venv .venv
@@ -51,6 +53,10 @@ source .venv/bin/activate
 python3 -m pip install -e .
 repo-signals --help
 ```
+
+Run every step from here on in the same terminal window. Later blocks use variables set earlier,
+such as `CONFIG_DIR` and the answers you type at the prompts, and a new window would not have
+them.
 
 ## 3. Create the config folder with init
 
@@ -188,6 +194,9 @@ chmod 600 "$CONFIG_DIR/first-run.toml"
 export REPO_SIGNALS_SIGNAL_FILE="$CONFIG_DIR/first-run.toml"
 ```
 
+The values you type must not contain double quotes or backslashes, or the file will not parse;
+the tool then refuses it with a code and nothing is requested.
+
 The rules for every field are in [signal-file.md](signal-file.md). Pick the title with your
 provider in mind. Hunter matches it as a case-insensitive substring of each position, so `CTO`
 will not match "Chief Technology Officer": use the words that appear in the positions. Apollo
@@ -198,7 +207,7 @@ or one domain per line. A good first entry is your own company's domain. The blo
 
 ```sh
 read -r "OWN_DOMAIN?Your own company's domain: "
-echo "$OWN_DOMAIN" >> "$CONFIG_DIR/suppression.txt"
+printf '%s\n' "$OWN_DOMAIN" >> "$CONFIG_DIR/suppression.txt"
 export REPO_SIGNALS_SUPPRESSION_FILE="$CONFIG_DIR/suppression.txt"
 ```
 
@@ -227,8 +236,16 @@ repo-signals doctor
 ```
 
 `doctor` is offline. It prints PASS, WARN or FAIL per line, and it names variables but never
-prints their values. Fix every FAIL. At this point you should still see the warnings that dry run
-is on.
+prints their values. Fix every FAIL. `REPO_SIGNALS_DRY_RUN` is still unset at this point, so dry
+run is on, and you should see these lines:
+
+- `PASS dry run is on: no paid calls, nothing written`
+- `PASS live collection is not armed (needs dry run off and REPO_SIGNALS_SIGNAL_FILE set)`
+- `PASS run --live is not armed; failing gates: REPO_SIGNALS_DRY_RUN`
+- `WARN hunter: live use is not enabled until dry run is turned off`, or the same line starting
+  with `apollo:` if you chose Apollo
+
+If the failing gates name anything besides `REPO_SIGNALS_DRY_RUN`, fix those first.
 
 ## 10. The dry run
 
@@ -261,6 +278,9 @@ repo-signals run --live
 It prints the plan: the target, the term, the most calls each service could use, the provider
 and the first 4 characters of the sheet id. Read it, then type exactly `yes`. Anything else stops
 it with nothing requested.
+
+Dry run stays off in this shell until the clean-up step, so do not stop here: finish by running
+the clean-up in step 14.
 
 ## 12. Check the sheet
 
