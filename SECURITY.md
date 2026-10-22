@@ -4,7 +4,7 @@
 
 Please do not open a public issue for a security problem.
 
-Contact: TBD: monitored alias on honeycombagents.ai
+Contact: use the Report a vulnerability button on the Security tab of this repository (private vulnerability reporting). This is an early project with no guaranteed response time.
 
 Please include what you found, how to reproduce it, and which version or commit is affected.
 
