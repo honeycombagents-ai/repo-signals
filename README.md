@@ -81,6 +81,8 @@ Before your first live run, work through the
 [throwaway-first checklist](docs/deployment.md#the-throwaway-first-checklist) in
 [docs/deployment.md](docs/deployment.md).
 
+Step by step from a clean machine: [docs/setup-guide.md](docs/setup-guide.md). Error codes and drop counts: [docs/troubleshooting.md](docs/troubleshooting.md).
+
 Settings come from environment variables only:
 
 | variable | meaning | default |
