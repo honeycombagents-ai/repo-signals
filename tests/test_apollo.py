@@ -237,7 +237,7 @@ class Parsing(unittest.TestCase):
         self.assertEqual([x.name for x in p.find_people(DOMAIN, (), 50)],
                          ["Avery Alder", "Blake", "Kept Person"])
 
-    def test_title_filter_case_insensitive(self):
+    def test_apollo_returns_all_rows_titles_are_filtered_by_apollo(self):
         p, _, _ = live()
         every = ["CTO", "VP Engineering", "Co-founder & cto", "Designer", "Head of Engineering"]
         self.assertEqual([x.title for x in p.find_people(DOMAIN, ("cto",), 10)], every)
@@ -511,10 +511,9 @@ class Source(unittest.TestCase):
         self.assertTrue(apollo.PEOPLE_SEARCH_URL.endswith("/mixed_people/api_search"))
 
     def test_docs_state_search_returns_no_email(self):
-        note = ("Apollo's people search returns names and titles but, per Apollo's documentation, "
-                "not email addresses. In search-only mode Apollo rows therefore normally have no "
-                "email. Emails need a separate, credit-spending enrichment call, which is not "
-                "implemented.")
+        note = ("Apollo's people search returns first names and titles, and no email addresses. "
+                "In search-only mode Apollo rows therefore normally have no email. Emails need a "
+                "separate, credit-spending enrichment call, which is not implemented.")
         for name in ("docs/apollo.md", "README.md"):
             with self.subTest(file=name):
                 text = " ".join((ROOT / name).read_text().split())

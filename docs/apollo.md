@@ -52,13 +52,14 @@ people = provider.find_people("example.com", ("CTO", "VP Engineering"), 5)
 The provider makes exactly one request per lookup: the people search. **It never calls an
 email-reveal, enrichment or other credit-spending endpoint.** This is intentional.
 
-Apollo's people search returns names and titles but, per Apollo's documentation, not email
-addresses. In search-only mode Apollo rows therefore normally have no email. Emails need a
-separate, credit-spending enrichment call, which is not implemented.
+Apollo's people search returns first names and titles, and no email addresses. In search-only
+mode Apollo rows therefore normally have no email. Emails need a separate, credit-spending
+enrichment call, which is not implemented.
 
-In practice the search gives you **first names and titles**. A live check on 2026-10-22 showed
-that it hides last names and returns only a `has_email` flag: no email address and no email
-status. So an Apollo row normally has a first name, a title and no email.
+A live check on 2026-10-22 showed that the search hides last names and returns only a
+`has_email` flag: no email address and no email status. So an Apollo row normally has a first
+name, a title and no email. In the sheet, such rows are told apart by name, title and domain
+(see [google-sheets.md](google-sheets.md)).
 
 A person whose email is missing, empty or a locked placeholder is still returned, with
 `email=None` and `confidence` 0.0, so a reviewer can see the name and title. Adding reveal would
@@ -100,6 +101,9 @@ ever added, it must:
 - When titles are given, they are sent with the search as `person_titles`, and Apollo filters
   by title on its side. The provider does not filter titles again: Apollo matches "CEO" to
   "Chief Executive Officer", and a plain text match would throw that person away.
+- Apollo's title search is approximate, so a search for one title can return adjacent roles. In a
+  live check on 2026-10-22, a search for "CEO" returned a co-founder and chief executive officer
+  plus two "Executive Operations" roles. Review titles before drafting.
 - At most `limit` people come back. The request asks for at most 100 per page and only the first
   page.
 

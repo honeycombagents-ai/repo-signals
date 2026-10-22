@@ -8,8 +8,8 @@ code-only ProviderError. It never sleeps or retries.
 
 Hunter has no title parameter, so titles are filtered here: a case-insensitive substring match
 on the position. "CTO" matches "Co-founder & CTO" but not "Chief Technology Officer". A record
-without a name or a position, or filtered out by title, is counted in ``last_dropped`` (code
-to count, reset on every lookup) and never logged.
+without a usable email, a name or a position, or filtered out by title, is counted in
+``last_dropped`` (code to count, reset at the very start of every lookup) and never logged.
 """
 import os
 import re
@@ -159,7 +159,7 @@ class HunterProvider:
 
     def find_people(self, company_domain: str, titles: tuple[str, ...],
                     limit: int) -> list[Person]:
-        self.last_dropped = {}
+        self.last_dropped = {}  # first, so a lookup that raises leaves no stale counts
         if not isinstance(company_domain, str) or not _DOMAIN_RE.fullmatch(company_domain):
             raise ValueError("company_domain must be a domain name")
         if not isinstance(titles, tuple) or not all(isinstance(t, str) and t.strip() for t in titles):
@@ -226,6 +226,7 @@ class HunterProvider:
                                         _text(entry.get(FIELD_LAST_NAME))) if p)
             position = _text(entry.get(FIELD_POSITION))
             if not _usable_email(email):
+                self._drop("missing_email")
                 continue
             if not name or not position:
                 self._drop("missing_name" if not name else "missing_title")

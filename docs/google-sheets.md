@@ -103,7 +103,10 @@ You can add your own columns to the right of `written_at`. The tool never writes
   - A sheet with data but no header row is refused with `header_missing`.
 - **It never duplicates a person.** A person already in the sheet is skipped and the existing
   row is left alone. A match means the same email, ignoring case. When the new person has no
-  email, a match means the same name and company_domain.
+  email, a match means the same name, title and company_domain, ignoring case and surrounding
+  spaces. Apollo rows have a first name and no email, so the title keeps two people with the
+  same first name at one company apart. The other side of this rule: if a person's title
+  changes between runs, the new title produces a second row. The first row is never changed.
 - **It never touches `email_draft` or `reviewed` after appending.** An initial draft can only be
   part of a new row. Rows are only ever appended,
   and the client refuses any update that would touch those columns below the header row.

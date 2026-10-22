@@ -4,7 +4,9 @@
 - On each write it checks the header row first. An empty sheet gets the headers. A sheet whose
   headers differ is REFUSED (``header_mismatch``): someone else's data is never overwritten.
 - Rows are only appended. A person already in the sheet (same email or, when the email is
-  empty, same name and company_domain) is skipped: never duplicated, never overwritten.
+  empty, same name, title and company_domain) is skipped: never duplicated, never overwritten.
+  Apollo rows have a first name and no email, so the title keeps two people with the same first
+  name at one company apart. A changed title can therefore produce a second row.
 - reviewed is always written empty. email_draft is written empty, or with an initial draft when
   the record supplies one; either way only on a NEW row. Existing rows are never written again.
 - Every cell built from external data passes the formula-injection guard: a value starting with
@@ -51,17 +53,19 @@ def _display(value, width=40):
 
 
 def _key(row):
-    row = list(row) + [""] * (len(COLUMNS) - len(row))
-    email = str(row[_I["email"]]).strip().lower()
+    """The duplicate key: the email when there is one, else name, title and company_domain."""
+    padded = list(row) + [""] * (len(COLUMNS) - len(row))
+    email = str(padded[_I["email"]]).strip().lower()
     if email:
         return ("email", email)
-    return ("name", str(row[_I["name"]]).strip().casefold(),
-            str(row[_I["company_domain"]]).strip().casefold())
+    return _name_key(row)
 
 
 def _name_key(row):
+    """Name, title and company_domain, casefolded: the same for existing rows and new rows."""
     row = list(row) + [""] * (len(COLUMNS) - len(row))
     return ("name", str(row[_I["name"]]).strip().casefold(),
+            str(row[_I["title"]]).strip().casefold(),
             str(row[_I["company_domain"]]).strip().casefold())
 
 

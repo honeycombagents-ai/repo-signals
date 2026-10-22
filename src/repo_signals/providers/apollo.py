@@ -140,7 +140,7 @@ class ApolloProvider:
 
     def find_people(self, company_domain: str, titles: tuple[str, ...],
                     limit: int) -> list[Person]:
-        self.last_dropped = {}
+        self.last_dropped = {}  # first, so a lookup that raises leaves no stale counts
         if not isinstance(company_domain, str) or not _DOMAIN_RE.fullmatch(company_domain):
             raise ValueError("company_domain must be a domain name")
         if not isinstance(titles, tuple) or not all(isinstance(t, str) and t.strip() for t in titles):

@@ -100,7 +100,8 @@ def people_stage(evidence_by_domain, provider, self_charging, budget, titles, su
                  out=None):
     """((person, evidence) list, Counter of codes, stop code or None). Never raises.
 
-    After each lookup, a provider's ``last_dropped`` counts are printed as one code-only line.
+    After each successful lookup, a provider's ``last_dropped`` counts are printed as one
+    code-only line. A lookup that raised prints none.
     """
     people, counts, stop = [], Counter(), None
     for domain, items in evidence_by_domain.items():

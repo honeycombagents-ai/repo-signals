@@ -58,9 +58,9 @@ Nothing makes a network call unless you turn dry run off, and every live command
   [docs/deployment.md](docs/deployment.md).
 
 The Apollo adapter searches only: email reveal is not implemented. Apollo's people search
-returns names and titles but, per Apollo's documentation, not email addresses. In search-only mode
-Apollo rows therefore normally have no email. Emails need a separate, credit-spending enrichment
-call, which is not implemented.
+returns first names and titles, and no email addresses. In search-only mode Apollo rows therefore
+normally have no email. Emails need a separate, credit-spending enrichment call, which is not
+implemented.
 
 ## Quick start
 

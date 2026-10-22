@@ -104,8 +104,8 @@ Only the sheet is written to, and only by appending rows in the fixed layout:
 | `written_at` | the UTC time of the write |
 
 Every value from outside passes the formula guard. A person already in the sheet (same email, or
-same name and company domain when there is no email) is **skipped and never updated**, so a
-person's edits to `email_draft` or `reviewed` are never touched.
+same name, title and company domain when there is no email) is **skipped and never updated**, so
+a person's edits to `email_draft` or `reviewed` are never touched.
 
 ## What is never stored or sent
 
