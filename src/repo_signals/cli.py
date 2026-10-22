@@ -27,6 +27,9 @@ def main(argv=None) -> int:
                                    "(dry run unless --live)")
     r.add_argument("--live", action="store_true",
                    help="make real requests after a typed confirmation")
+    i = sub.add_parser("init", help="create starter config files (offline, asks for no secret)")
+    i.add_argument("--dir", default=None, help="where to create them (default "
+                                               "./repo-signals-config)")
     args = ap.parse_args(argv)
     if args.command == "doctor":
         return doctor.run(online=args.online)
@@ -44,4 +47,7 @@ def main(argv=None) -> int:
     if args.command == "run":
         from . import run as run_command  # loaded only when used
         return run_command.run(live=args.live)
+    if args.command == "init":
+        from . import init_setup  # loaded only when used
+        return init_setup.run_init(args.dir)
     return 2

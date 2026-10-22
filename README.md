@@ -49,6 +49,8 @@ Live collection is gated: dry run must be off, and `repo-signals collect --live`
 a separate call budget for each service. It is a dry run by default, and `run --live` has the
 same gates and typed "yes" (see [docs/run.md](docs/run.md)). Nothing is ever sent by email.
 
+To set up and run it on your own machine, see [docs/deployment.md](docs/deployment.md).
+
 ```sh
 python3 -m pip install -e .       # Python 3.12 or newer
 repo-signals doctor               # offline checks: PASS, WARN or FAIL per line
