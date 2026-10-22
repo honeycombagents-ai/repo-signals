@@ -17,7 +17,10 @@ from .base import ProviderError
 from .fake import FakeProvider
 
 # --- Hunter API details ------------------------------------------------------------------
-# UNVERIFIED general knowledge, not checked against Hunter's documentation:
+# Checked against a real Hunter account on 2026-10-22: the endpoint, the X-API-KEY header,
+# the domain parameter, and the response fields for email, position, first and last name
+# and confidence. Still unchecked: the seniority and department filters, the
+# credits-remaining field and the error ids.
 # verify against Hunter's current API documentation before first live use.
 API_KEY_ENV = "HUNTER_API_KEY"
 API_HOST = "api.hunter.io"

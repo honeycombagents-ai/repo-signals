@@ -107,6 +107,10 @@ If a response includes a remaining requests or credits count in the assumed shap
 stores it in `provider.credits_remaining`, an integer. Getting this number costs no extra call.
 `doctor` reports it when it is known.
 
+Until the credits-remaining field is checked, assume the remaining credits are not read from
+the response, so the tool does not show remaining credits. A domain search can spend one credit
+per call.
+
 ## Your responsibilities
 
 - **Hunter's terms are yours to read and follow.** Repo Signals claims no compliance with them.
@@ -114,23 +118,31 @@ stores it in `provider.credits_remaining`, an integer. Getting this number costs
   Repo Signals never sends email. A person reviews and sends every draft.
 - This is not legal advice.
 
-## Unverified API details
+## Checked and unchecked API details
 
-The endpoint and field names come from general knowledge. **They have not been checked against
-Hunter's documentation.** They all sit in one constants block at the top of
+The endpoint and field names first came from general knowledge. Some of them have since been
+checked live against a real Hunter account on 2026-10-22: one lookup, three results, emails
+present. The rest are still unchecked. They all sit in one constants block at the top of
 `providers/hunter.py`, marked "verify against Hunter's current API documentation before first
 live use". The tests use synthetic JSON built to the same assumed shape, so passing tests do not
 show that the assumptions are right.
 
-Before the first live call, check each of these:
+Checked live on 2026-10-22 (one lookup, three results, emails present):
 
-- [ ] `DOMAIN_SEARCH_URL`: the host, path and API version of the domain-search endpoint
-- [ ] `API_KEY_HEADER`: that the key can be sent as an `X-API-KEY` header, keeping it out of the URL
-- [ ] `PARAM_DOMAIN`, `PARAM_LIMIT`, `MAX_LIMIT`: the parameter names and the largest allowed limit
-- [ ] `PARAM_SENIORITY`, `SENIORITY_VALUES`, `PARAM_DEPARTMENT`, `DEPARTMENT_VALUES`
+- [x] `DOMAIN_SEARCH_URL`: the host, path and API version of the domain-search endpoint
+- [x] `API_KEY_HEADER`: that the key can be sent as an `X-API-KEY` header, keeping it out of the URL
+- [x] `PARAM_DOMAIN`: the domain parameter name
+- [x] `FIELD_EMAIL`, `FIELD_POSITION`, `FIELD_FIRST_NAME`, `FIELD_LAST_NAME`: the email,
+      position, first name and last name fields
+- [x] `FIELD_SCORE`: the confidence field
+
+Still unchecked, so check each of these before relying on it:
+
+- [ ] `PARAM_LIMIT`, `MAX_LIMIT`: the limit parameter name and the largest allowed limit
+- [ ] `PARAM_SENIORITY`, `SENIORITY_VALUES`, `PARAM_DEPARTMENT`, `DEPARTMENT_VALUES`: the
+      seniority and department filters
 - [ ] `RESP_DATA`, `RESP_EMAILS`: where the list of people sits in the response
-- [ ] `FIELD_EMAIL`, `FIELD_FIRST_NAME`, `FIELD_LAST_NAME`, `FIELD_POSITION`
-- [ ] `FIELD_SCORE` and `SCORE_MAX`: the score field and its range (assumed 0 to 100)
+- [ ] `SCORE_MAX`: the range of the confidence score (assumed 0 to 100)
 - [ ] the status codes for an auth failure, a rate limit and an exhausted plan, and whether
       `Retry-After` is sent
 - [ ] `RESP_ERRORS`, `ERROR_ID`, `PLAN_EXHAUSTED_ERROR_IDS`: the error body and the error ids for

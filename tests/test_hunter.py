@@ -3,6 +3,7 @@ follows the ASSUMED Hunter response shape in providers/hunter.py (unverified).""
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import traceback
@@ -489,6 +490,26 @@ class Source(unittest.TestCase):
         for const in ("DOMAIN_SEARCH_URL", "API_KEY_HEADER", "PARAM_DOMAIN", "PARAM_LIMIT",
                       "FIELD_EMAIL", "FIELD_SCORE", "CREDITS_REMAINING_PATHS"):
             self.assertIn(const + " =", head)
+
+    def test_live_check_recorded(self):
+        root = Path(__file__).resolve().parent.parent
+        doc = (root / "docs/hunter.md").read_text()
+        self.assertIn("Checked live on 2026-10-22 (one lookup, three results, emails present):", doc)
+        unchecked = doc.split("Still unchecked", 1)[1].split("\n## ", 1)[0]
+        for const in ("PARAM_SENIORITY", "PARAM_DEPARTMENT", "CREDITS_REMAINING_PATHS",
+                      "PLAN_EXHAUSTED_ERROR_IDS"):
+            self.assertIn(const, unchecked)
+        # The live-checked values, pinned so a change has to update the docs as well.
+        self.assertEqual((hunter.DOMAIN_SEARCH_URL, hunter.API_KEY_HEADER, hunter.PARAM_DOMAIN,
+                          hunter.FIELD_EMAIL, hunter.FIELD_POSITION, hunter.FIELD_FIRST_NAME,
+                          hunter.FIELD_LAST_NAME, hunter.FIELD_SCORE),
+                         ("https://api.hunter.io/v2/domain-search", "X-API-KEY", "domain",
+                          "value", "position", "first_name", "last_name", "confidence"))
+        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
+        for name in ("src/repo_signals/providers/hunter.py", "docs/hunter.md",
+                     "tests/test_hunter.py"):
+            with self.subTest(file=name):
+                self.assertIsNone(word.search((root / name).read_text()))
 
     def test_import_order_independent(self):
         for first in ("repo_signals.http", "repo_signals.providers.hunter",
