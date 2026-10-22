@@ -2,7 +2,7 @@ Subject: A public signal from {company_domain}
 
 Hi {first_name},
 
-I came across this public signal about {company_domain}:
+A public signal about {company_domain} turned up in an automated search of public GitHub repositories:
 {evidence_summary}
 Source: {evidence_url}
 

@@ -6,8 +6,9 @@ writes them only after a typed "yes" at a terminal. There is no flag to skip tha
 
 Files are only ever created, never overwritten: if any target exists, nothing is written. The
 directory is created with mode 0700 and each file with mode 0600, and a ``.gitignore`` holding
-``*`` keeps the folder out of git. It refuses to write inside a git work tree, through a
-symlink, or over a file.
+``*`` keeps the folder out of git. It refuses to write inside a git work tree or over a file.
+It also refuses a target path whose final component is a symlink; only that final component is
+checked, and symlinks earlier in the path are resolved.
 """
 import os
 import shutil

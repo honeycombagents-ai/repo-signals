@@ -18,6 +18,12 @@ A draft is only a starting point. Before anything goes out, a person:
 
 The tool never writes `reviewed`. That column is yours.
 
+## Before you send anything
+
+Drafts are written from an automated search of public data, not by a person who has looked at
+the company. A person must review every draft, check its evidence, and decide whether to send it.
+Email law, the terms of every platform you use, and data-protection law are your responsibility.
+
 ## How drafts are grounded
 
 Every draft rests on **evidence**: a public repository signal about the recipient's company.
@@ -67,7 +73,7 @@ Subject: A public signal from acme.example.com
 
 Hi Blake,
 
-I came across this public signal about acme.example.com:
+A public signal about acme.example.com turned up in an automated search of public GitHub repositories:
 The org publishes a repo named widget that uses library gadget.
 Source: https://code.example.com/acme/widget
 
