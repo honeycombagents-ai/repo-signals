@@ -102,7 +102,7 @@ because the preflight reads only the first row.
 | `signal_target_N_not_a_table` | Target number N is not a table. | Write it as a `[[targets]]` block. |
 | `signal_target_N_unknown_key` | Target number N has a key the tool does not know. | Only `domain`, `org` and `confirm_org` are allowed. |
 | `signal_target_N_bad_domain` | Target number N has a missing or malformed `domain`. | A hostname with at least one dot, for example `example.com`. |
-| `signal_target_N_bad_org` | Target number N has a malformed `org`. | Letters, digits and single inner hyphens, at most 39 characters. |
+| `signal_target_N_bad_org` | Target number N has a malformed `org`, for example a domain such as `example.com`. Nothing was requested. | Use the organisation name, the `NAME` in `github.com/NAME`: letters, digits and single inner hyphens, at most 39 characters. |
 | `signal_target_N_bad_confirm_org` | `confirm_org` on target N is not `true` or `false`. | Use `true` or `false` without quotes. |
 | `signal_target_N_confirm_org_without_org` | Target N has `confirm_org` but no `org`. | Add the `org`, or remove `confirm_org`. |
 | `signal_duplicate_domain` | Two targets have the same domain, ignoring case. | Remove the duplicate. |
@@ -192,8 +192,8 @@ target or a person was left out.
 | `summary_has_at` | The evidence summary held an `@`. It is dropped so no address leaks into a draft. | Nothing to fix. |
 | `summary_has_url` | The evidence summary held something that looks like a link. | Nothing to fix. |
 | `not_an_org` | The `org` in the signal file is a personal account, not an organisation. | The `org` value. |
-| `no_website` | The org lists no website, so it cannot be matched to the domain. | If you are sure it is the right org, add `confirm_org = true` to the target. |
-| `website_mismatch` | The org's website is on another domain. | The `org` value, or add `confirm_org = true` if you have checked it. |
+| `no_website` | The org lists no website, so it cannot be matched to the domain. The target is excluded: nothing is searched or looked up for it, and the run can end with `sheet: nothing to write`. | If you are sure it is the right org, add `confirm_org = true` to the target. |
+| `website_mismatch` | The org's website is on another domain. The target is excluded: nothing is searched or looked up for it, and the run can end with `sheet: nothing to write`. | The `org` value, or add `confirm_org = true` if you know the org belongs to the company. |
 | `no_search_name` | No search name could be made from a domain-only target. | Add an `org` to the target. |
 | `ambiguous` | More than one org matched a domain-only target. | Name the right `org` in the signal file. |
 | `unmatched` | No org matched a domain-only target. | Name the `org` in the signal file. |
@@ -251,6 +251,9 @@ For `repo-signals run` (see [run.md](run.md)):
 
   A length of 0 means you should run the `read -rs` line again.
 - **The first tab was renamed.** The tool writes to `Sheet1`.
+- **A domain typed as the organisation name.** `org` is the `NAME` in `github.com/NAME`, not a
+  domain. A domain is refused with `signal_target_N_bad_org` in the signal file, and `probe-org`
+  refuses it with `the login is not a valid organisation login shape; nothing requested`.
 - **The key is still in Downloads.** Move it to `~/.config/repo-signals`, set mode 600, and check
   that no copy is left behind.
 - **A second GitHub account is the active gh login.** If you fill `REPO_SIGNALS_GITHUB_TOKEN`

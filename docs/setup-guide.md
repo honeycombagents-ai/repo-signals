@@ -87,13 +87,16 @@ Do this in the Google Cloud console, in a browser.
 4. Open the service account, then Keys, Add key, Create new key, JSON. The key file downloads.
    Treat it like a password.
 
-Move the key out of Downloads and lock it down. At the prompt, drag the downloaded file into the
-terminal window (or type its full path) and press Return:
+Move the key out of Downloads and lock it down. At the prompt, type the key's full path or drag
+the downloaded file into the terminal window, then press Return. A path that starts with `~` is
+fine: the line after the prompt expands it to your home folder. If the path holds spaces, type it
+without backslashes.
 
 ```sh
 mkdir -p ~/.config/repo-signals
 chmod 700 ~/.config/repo-signals
 read -r "KEY_DOWNLOAD?Path of the downloaded key: "
+KEY_DOWNLOAD="${KEY_DOWNLOAD/#\~/$HOME}"
 mv "$KEY_DOWNLOAD" ~/.config/repo-signals/service-account.json
 chmod 600 ~/.config/repo-signals/service-account.json
 ls -l ~/.config/repo-signals/service-account.json
@@ -172,15 +175,21 @@ export REPO_SIGNALS_PROVIDER_MAX_CALLS=1
 export REPO_SIGNALS_SHEETS_MAX_CALLS=6
 ```
 
+`REPO_SIGNALS_SHEETS_MAX_CALLS=6` is exactly enough for a first run on an empty sheet: a token
+and a header read before anything is collected, then the header read again, the existing rows,
+the header write and one append. The second run in step 13 needs fewer (4: no header write and,
+with nothing new, no append), but `run --live` still requires at least 6. Use 8 if you want
+headroom, for example for a second append.
+
 ## 7. A signal file and a suppression file
 
 For the first run, use one target with a named GitHub organisation, one term and one job title.
-The block asks for the company's domain, its GitHub organisation login, the term to search for
-and the title to look up, then writes a small signal file next to the example one:
+The block asks for the company's domain, its GitHub organisation name, the term to search for and
+the title to look up, then writes a small signal file next to the example one:
 
 ```sh
 read -r "TARGET_DOMAIN?Company domain: "
-read -r "TARGET_ORG?GitHub organisation login: "
+read -r "TARGET_ORG?GitHub organisation name (the NAME in github.com/NAME, not a domain): "
 read -r "SEARCH_TERM?Search term: "
 read -r "JOB_TITLE?Job title: "
 cat > "$CONFIG_DIR/first-run.toml" <<EOF
@@ -197,7 +206,22 @@ export REPO_SIGNALS_SIGNAL_FILE="$CONFIG_DIR/first-run.toml"
 ```
 
 The values you type must not contain double quotes or backslashes, or the file will not parse;
-the tool then refuses it with a code and nothing is requested.
+the tool then refuses it with a code and nothing is requested. The organisation name is the
+`NAME` in `github.com/NAME`, for example `example-org`. A domain such as `example.com` is refused
+there with `signal_target_1_bad_org` (`repo-signals doctor` shows it), and nothing is requested.
+
+When you run it, the tool looks the organisation up and checks the website listed on its GitHub
+profile. If that website is on another domain, or none is listed, the target is excluded: the run
+prints `example.com -> example-org (user, website_mismatch: excluded; set confirm_org = true to
+include)` (or `no website listed`) and looks nothing up for that company. If you know the
+organisation belongs to the company, you can add `confirm_org = true` to the target. It goes in
+the `[[targets]]` table, under `org`, and it makes the tool include the target without the website
+check. Set it only for an organisation you know belongs to the company. It is optional and not in
+the block above; the target is the last table in the file, so this adds it there:
+
+```sh
+printf '%s\n' "confirm_org = true" >> "$CONFIG_DIR/first-run.toml"
+```
 
 The rules for every field are in [signal-file.md](signal-file.md). Pick the title with your
 provider in mind. Hunter matches it as a case-insensitive substring of each position, so `CTO`
@@ -294,6 +318,22 @@ the clean-up in step 14.
 
 Open the sheet. You should see the header row and a few new rows. Read every row and every draft
 before you do anything with them. The `reviewed` column is for you to fill in.
+
+A first live run can also end with nothing written, and that is not an error: the run prints
+`sheet: nothing to write` and `run: complete; nothing sent by email`. No sheet append is made (the
+`requests made` line shows only the 2 sheet calls of the header check), and the collect and people
+lines say why:
+
+- `example.com -> example-org (user, website_mismatch: excluded; set confirm_org = true to
+  include)` or `(user, no website listed: excluded; ...)`: the organisation was excluded, so no
+  repository was searched and no provider call was made (no credit spent). See `confirm_org` in
+  step 7.
+- `dropped 1: term_not_in_name` and `people skipped: no_evidence 1`: no repository name in that
+  organisation contains your term, so there is no evidence and no provider call (no credit
+  spent). Try another term.
+- `people dropped for example.com: filtered_by_title 2` with
+  `people: 1 domain(s) looked up, 0 people found`: the provider was asked once (that call may
+  spend a credit), but nobody matched the title. With Hunter, see the first-3 note in step 7.
 
 If the run printed a line such as `people dropped for example.com: filtered_by_title 2`, the
 provider found people that were left out, and the line says why by code only. See

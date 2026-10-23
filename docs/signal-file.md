@@ -55,8 +55,17 @@ org = "example-org"
 ```
 
 `confirm_org = true` says that you have checked `example-labs` really is the company at
-`shop.example.com`. Without it, a live run would exclude the target if the org's website were on
-another domain.
+`shop.example.com`. It goes in a `[[targets]]` table that also has an `org`.
+
+What it does: for a target with an `org`, a live run looks the org up and checks the website on
+its GitHub profile. A website on exactly the target's domain (or `www.` plus it) matches. A
+website on another domain, or no website at all, excludes the target (`website_mismatch` or
+`no_website`), and nothing is searched or looked up for that company. With `confirm_org = true`
+the target is included anyway, and the match line says `confirmed`. It does not skip the other
+checks: an org that does not exist (`not_found`) or is not an organisation (`not_an_org`) is
+still excluded. It has no effect on a domain-only target, which needs an org whose website is on
+its domain and which GitHub marks as verified; to use a website-only candidate, add it as `org`.
+Set `confirm_org = true` only for an org you know belongs to the company.
 
 ## Fields
 
@@ -75,8 +84,8 @@ Each target:
 | field | required | rule |
 |---|---|---|
 | `domain` | yes | a hostname with at least one dot, for example `example.com`. It is stored in lowercase. |
-| `org` | no | a GitHub organisation login: letters, digits and single inner hyphens, at most 39 characters (this shape is unverified) |
-| `confirm_org` | no | `true` or `false` (default `false`); `true` needs an `org` |
+| `org` | no | a GitHub organisation login, the `NAME` in `github.com/NAME`: letters, digits and single inner hyphens, at most 39 characters (this shape is unverified). A domain such as `example.com` is refused (`signal_target_N_bad_org`) |
+| `confirm_org` | no | `true` or `false` (default `false`); `true` needs an `org` and includes the target even when the org's website is on another domain or missing (see Example 2) |
 
 ## Validation rules
 
