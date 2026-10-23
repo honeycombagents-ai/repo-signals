@@ -66,11 +66,24 @@ names only the variables or conditions that fail.
 3. The five sender variables are set (see [drafting.md](drafting.md)).
 4. The selected provider's own variables are set (for example `HUNTER_API_KEY`).
 5. `REPO_SIGNALS_SHEET_ID` and `REPO_SIGNALS_GOOGLE_CREDENTIALS` are set.
-6. The suppression list, if set, parses.
-7. The GitHub plan fits `REPO_SIGNALS_MAX_CALLS` and the search-rate ceiling.
-8. stdin and stdout are a terminal.
+6. The key file passes the same check the run uses to load it: it can be read and is a JSON
+   service-account key whose `type`, `client_email` and `private_key` are present and well
+   formed. A failure is named `REPO_SIGNALS_GOOGLE_CREDENTIALS file (credentials_unreadable)` or
+   `REPO_SIGNALS_GOOGLE_CREDENTIALS file (credentials_malformed)`, never with the path or any key
+   content. Nothing is signed and openssl is not run.
+7. `openssl` is on `PATH` (named `openssl_not_found`), because the built-in signer needs it. A
+   program that passes its own Signer to `run.run` skips this gate.
+8. `REPO_SIGNALS_SHEETS_MAX_CALLS` is at least 5 (named
+   `REPO_SIGNALS_SHEETS_MAX_CALLS of at least 5`): a token, the header row, the existing rows,
+   the header write and one append.
+9. The suppression list, if set, parses.
+10. The GitHub plan fits `REPO_SIGNALS_MAX_CALLS` and the search-rate ceiling.
+11. stdin and stdout are a terminal.
 
-`doctor` checks gates 1 to 7 offline and prints `run --live is ARMED` (WARN) or lists the failing
+Gates 6 to 8 catch, before the typed "yes", sheet problems that would otherwise appear only at
+the sheet stage, after the GitHub requests and the paid people lookups.
+
+`doctor` checks gates 1 to 10 offline and prints `run --live is ARMED` (WARN) or lists the failing
 gates by name.
 
 Then the run prints the plan: targets, terms, the most calls each service could use against its

@@ -238,7 +238,7 @@ def _dry_run(environ, out, err, run_id):
 
 def _live(environ, stdin, out, err, registry, github_http, provider_factory, sheets_http,
           signer, today, clock, run_id):
-    gates = check_gates(environ, registry)
+    gates = check_gates(environ, registry, signer=signer)
     if gates.failures:
         print(f"run: refused: failing gates: {', '.join(gates.failures)}; nothing requested",
               file=err)

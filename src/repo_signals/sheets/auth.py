@@ -98,14 +98,27 @@ class OpenSSLSigner:
 
 
 class CredentialsCheck(NamedTuple):
-    """The offline result of inspecting a credentials file. Holds names, never values.
+    """The offline result of checking a credentials file. Holds names, never values.
 
-    ``problem`` is None, "unreadable", "too_large", "not_json", "missing_keys" or "wrong_type".
+    ``problem`` is None, "unreadable", "too_large", "not_json", "missing_keys", "wrong_type" or
+    "malformed_field". ``fields`` names the keys involved (missing or malformed).
     """
 
     problem: str | None
-    missing_keys: tuple[str, ...] = ()
+    fields: tuple[str, ...] = ()
     loose_permissions: bool = False
+
+    @property
+    def missing_keys(self) -> tuple[str, ...]:
+        return self.fields if self.problem == "missing_keys" else ()
+
+    @property
+    def code(self) -> str | None:
+        """The ProviderError code the run raises for this problem (None when there is none)."""
+        if self.problem is None:
+            return None
+        return "credentials_unreadable" if self.problem == "unreadable" else \
+            "credentials_malformed"
 
 
 def _read_json(path):
@@ -130,35 +143,43 @@ def _read_json(path):
     return None, data, loose
 
 
-def inspect_credentials(path) -> CredentialsCheck:
+def _check(path):
+    """``(CredentialsCheck, data)``: the ONE key-file check, shared by ``load_credentials`` (the
+    run), ``inspect_credentials`` (doctor) and the run --live gates. Reads the file; never
+    signs, runs openssl or touches the network."""
     problem, data, loose = _read_json(path)
     if problem:
-        return CredentialsCheck(problem, (), loose)
+        return CredentialsCheck(problem, (), loose), None
     missing = tuple(k for k in g.REQUIRED_CRED_KEYS
                     if not isinstance(data.get(k), str) or not data.get(k).strip())
     if missing:
-        return CredentialsCheck("missing_keys", missing, loose)
+        return CredentialsCheck("missing_keys", missing, loose), None
     if data[g.CRED_TYPE] != g.CRED_TYPE_SERVICE_ACCOUNT:
-        return CredentialsCheck("wrong_type", (), loose)
-    return CredentialsCheck(None, (), loose)
+        return CredentialsCheck("wrong_type", (), loose), None
+    email, key = data[g.CRED_CLIENT_EMAIL], data[g.CRED_PRIVATE_KEY]
+    bad = []
+    if email.count("@") != 1 or any(c.isspace() for c in email):
+        bad.append(g.CRED_CLIENT_EMAIL)
+    if not key.lstrip().startswith("-----BEGIN ") or "PRIVATE KEY-----" not in key:
+        bad.append(g.CRED_PRIVATE_KEY)
+    if bad:
+        return CredentialsCheck("malformed_field", tuple(bad), loose), None
+    return CredentialsCheck(None, (), loose), data
+
+
+def inspect_credentials(path) -> CredentialsCheck:
+    """The shared key-file check, as names and codes only (for doctor and the gates)."""
+    return _check(path)[0]
 
 
 def load_credentials(path):
     """``(client_email, private_key_pem)`` or a code-only ProviderError. Never cached."""
     if not isinstance(path, str) or not path:
         raise ProviderError("credentials_missing")
-    problem, data, _ = _read_json(path)
-    if problem == "unreadable":
-        raise ProviderError("credentials_unreadable")
-    if problem:
-        raise ProviderError("credentials_malformed")
-    email, key = data.get(g.CRED_CLIENT_EMAIL), data.get(g.CRED_PRIVATE_KEY)
-    if (data.get(g.CRED_TYPE) != g.CRED_TYPE_SERVICE_ACCOUNT or not isinstance(email, str)
-            or email.count("@") != 1 or any(c.isspace() for c in email)
-            or not isinstance(key, str) or not key.lstrip().startswith("-----BEGIN ")
-            or "PRIVATE KEY-----" not in key):
-        raise ProviderError("credentials_malformed")
-    return email, key
+    check, data = _check(path)
+    if check.problem is not None:
+        raise ProviderError(check.code)
+    return data[g.CRED_CLIENT_EMAIL], data[g.CRED_PRIVATE_KEY]
 
 
 class ServiceAccountAuth:

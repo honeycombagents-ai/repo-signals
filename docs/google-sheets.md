@@ -41,8 +41,11 @@ Live writing is reachable from the command line only through the gated `repo-sig
 `doctor` stays offline. It reports, by name only:
 
 - whether `REPO_SIGNALS_GOOGLE_CREDENTIALS` is set;
-- if it is set, whether the file exists and parses as JSON with the expected keys (`type`,
-  `client_email`, `private_key`), and whether other users can read it;
+- if it is set, whether the file passes the same check the run uses to load it: it exists, parses
+  as JSON with the expected keys (`type`, `client_email`, `private_key`), is a service-account
+  key, and has a well-formed `client_email` and a `private_key` shaped like a key. A problem is
+  a FAIL naming the field and the code (`credentials_unreadable` or `credentials_malformed`),
+  never a value. It also says whether other users can read the file;
 - whether `REPO_SIGNALS_SHEET_ID` is set;
 - whether `openssl` is on `PATH`.
 

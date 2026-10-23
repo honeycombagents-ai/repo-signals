@@ -351,8 +351,8 @@ class Credentials(unittest.TestCase):
                  ({"type": "service_account"}, None, "missing_keys"),
                  ({**good, "client_email": ""}, None, "missing_keys"),
                  ({**good, "type": "authorized_user"}, None, "wrong_type"),
-                 ({**good, "private_key": "SENTINELKEYMATERIAL"}, None, None),
-                 ({**good, "client_email": "no-at"}, None, None)]
+                 ({**good, "private_key": "SENTINELKEYMATERIAL"}, None, "malformed_field"),
+                 ({**good, "client_email": "no-at"}, None, "malformed_field")]
         for data, raw, problem in cases:
             with self.subTest(problem=problem, raw=raw[:10] if raw else None):
                 c = Creds(data=data, raw=raw)

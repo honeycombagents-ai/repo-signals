@@ -88,9 +88,12 @@ def check_budget(environ, var, parse, default):
     return [(PASS, f"{var} not set: using the default of {default}")]
 
 
-def check_run_gates(environ, registry):
-    """Whether run --live would pass its offline gates, failing gates by NAME only."""
-    failures = check_gates(environ, registry).failures
+def check_run_gates(environ, registry, which=None):
+    """Whether run --live would pass its offline gates, failing gates by NAME only.
+
+    doctor knows only the built-in signer, so a missing openssl is a failing gate here.
+    """
+    failures = check_gates(environ, registry, which=which).failures
     if failures:
         return [(PASS, f"run --live is not armed; failing gates: {', '.join(failures)}")]
     return [(WARN, "run --live is ARMED: every offline gate passes (it still needs a terminal "
@@ -133,19 +136,23 @@ def check_google_credentials(environ):
     if path is None:
         return [(WARN, f"{var} is missing (needed before results can be written to a Sheet)")]
     lines = [(PASS, f"{var} is set")]
-    check = inspect_credentials(path)
+    check = inspect_credentials(path)   # the same check the run uses to load the key file
     if check.problem == "unreadable":
-        return lines + [(FAIL, f"{var} does not point to a readable file")]
+        return lines + [(FAIL, f"{var} does not point to a readable file ({check.code})")]
     if check.problem == "too_large":
-        lines.append((FAIL, f"{var} file is too large to be a service-account key"))
+        lines.append((FAIL, f"{var} file is too large to be a service-account key "
+                            f"({check.code})"))
     elif check.problem == "not_json":
-        lines.append((FAIL, f"{var} file does not parse as a JSON object"))
+        lines.append((FAIL, f"{var} file does not parse as a JSON object ({check.code})"))
     elif check.problem == "missing_keys":
         lines.append((FAIL, f"{var} file lacks the expected keys: "
-                            f"{', '.join(check.missing_keys)}"))
+                            f"{', '.join(check.fields)} ({check.code})"))
     elif check.problem == "wrong_type":
-        lines.append((FAIL, f"{var} file is not a service-account key "
-                            f"({google_api.CRED_TYPE} is not {google_api.CRED_TYPE_SERVICE_ACCOUNT})"))
+        lines.append((FAIL, f"{var} file is not a service-account key ({google_api.CRED_TYPE} "
+                            f"is not {google_api.CRED_TYPE_SERVICE_ACCOUNT}; {check.code})"))
+    elif check.problem == "malformed_field":
+        lines.append((FAIL, f"{var} file has a malformed field: {', '.join(check.fields)} "
+                            f"({check.code})"))
     else:
         lines.append((PASS, f"{var} file parses as JSON with the expected keys "
                             f"({', '.join(google_api.REQUIRED_CRED_KEYS)})"))
@@ -266,7 +273,7 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_templates(),
         *check_signal_file(environ),
         *check_hunter_titles(environ),
-        *check_run_gates(environ, registry),
+        *check_run_gates(environ, registry, which),
     ]
 
 

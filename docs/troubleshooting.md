@@ -111,9 +111,9 @@ These are the codes most often seen in a first run, and what each one usually me
 | `sheet_id_missing` | `REPO_SIGNALS_SHEET_ID` is not set. | Set it to the long id in the sheet's address. |
 | `credentials_missing` | `REPO_SIGNALS_GOOGLE_CREDENTIALS` is not set. | Set it to the key file's path. |
 | `credentials_unreadable` | The key file could not be read. | The path, and that the file still exists after you moved it out of Downloads. |
-| `credentials_malformed` | The key file is not a service-account JSON key. | Download a new JSON key for the service account. |
+| `credentials_malformed` | The key file is not a service-account JSON key, or its `client_email` or `private_key` is malformed. `doctor` names the field, and `run --live` refuses before the typed "yes". | Download a new JSON key for the service account. |
 | `budget_missing` | The sheet writer was started live without a call budget. | Only happens in your own code: pass a `CallBudget`. |
-| `openssl_not_found` | `openssl` is not on `PATH`. | Install openssl, or check `PATH` in the shell you run from. `openssl version` should work. |
+| `openssl_not_found` | `openssl` is not on `PATH`. `run --live` refuses before the typed "yes" (it is listed as a failing gate), and `doctor` warns. | Install openssl, or check `PATH` in the shell you run from. `openssl version` should work. |
 | `signing_failed` | openssl could not sign the token request. | The key file is complete and unedited. Download a fresh key if in doubt. <a id="signing_failed"></a> |
 | `signing_timeout` | openssl took too long to sign. | Try again. Check that nothing is blocking openssl. |
 | `sheet_not_found` | Google answered 404 for the sheet. | The sheet id, and that the sheet is shared with the service account email. |

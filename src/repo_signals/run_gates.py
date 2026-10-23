@@ -1,9 +1,12 @@
 """The gates ``repo-signals run --live`` must pass, checked offline.
 
 Shared by ``run --live`` (which also needs a terminal and a typed "yes") and ``doctor``.
-Failures are reported by NAME only (a variable name or a named condition), never a value.
-Nothing here makes a network call or imports the GitHub client.
+Failures are reported by NAME only (a variable name, a named condition or a code), never a
+value. Nothing here makes a network call, runs openssl or imports the GitHub client. The key file
+is checked with the same function the run uses to load it (``sheets.auth``), and openssl is
+looked for on PATH only when the built-in signer will be used.
 """
+import shutil
 from typing import NamedTuple
 
 from . import config
@@ -12,9 +15,15 @@ from .collector.signal import SignalError, signal_from_env
 from .drafting.base import SENDER_FIELD_VARS, DraftError, sender_from_env
 from .drafting.suppression import suppression_from_env
 from .providers.registry import UnknownProviderError, default_registry
+from .sheets.auth import inspect_credentials
 
 GITHUB_PLAN_GATE = f"github plan within {config.MAX_CALLS}"
 SEARCH_CEILING_GATE = "github plan within the search-rate ceiling"
+# Token, header row, existing rows, header write and one append: the fewest sheet calls a write
+# can need (run.SHEETS_CALLS_PER_WRITE; a test keeps the two equal).
+MIN_SHEETS_CALLS = 5
+SHEETS_BUDGET_GATE = f"{config.SHEETS_MAX_CALLS} of at least {MIN_SHEETS_CALLS}"
+OPENSSL_GATE = "openssl_not_found"
 
 
 class Gates(NamedTuple):
@@ -26,9 +35,14 @@ class Gates(NamedTuple):
     plan: object = None
 
 
-def check_gates(environ, registry=None) -> Gates:
-    """Every failing gate by name, in a fixed order, plus what passed (for the run)."""
+def check_gates(environ, registry=None, *, signer=None, which=None) -> Gates:
+    """Every failing gate by name, in a fixed order, plus what passed (for the run).
+
+    ``signer`` is the custom Signer the run will use, if any: with one, openssl is not needed and
+    not looked for. ``which`` finds a program on PATH (``shutil.which`` by default).
+    """
     registry = registry if registry is not None else default_registry()
+    which = which if which is not None else shutil.which
     try:
         settings = config.load_settings(environ)
     except config.ConfigError as e:
@@ -65,6 +79,14 @@ def check_gates(environ, registry=None) -> Gates:
         failures.append(config.SHEET_ID)
     if not settings.google_credentials:
         failures.append(config.GOOGLE_CREDENTIALS)
+    else:
+        code = inspect_credentials(settings.google_credentials).code
+        if code is not None:
+            failures.append(f"{config.GOOGLE_CREDENTIALS} file ({code})")
+    if signer is None and not which("openssl"):
+        failures.append(OPENSSL_GATE)
+    if settings.sheets_max_calls < MIN_SHEETS_CALLS:
+        failures.append(SHEETS_BUDGET_GATE)
 
     suppression, plan = None, None
     try:

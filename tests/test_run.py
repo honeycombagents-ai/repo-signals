@@ -362,12 +362,11 @@ class Budgets(Case):
         self.assertIn("requests made: github 4 of 10, provider 1 of 1, sheets 4 of 10", out)
         self.assertEqual(len(self.rows()), 3)
 
-    def test_sheets_cap_stops_only_the_sheet_stage(self):
+    def test_sheets_cap_below_the_minimum_is_refused_before_start(self):
         code = self.live(self.env(**{config.SHEETS_MAX_CALLS: "2"}))
-        self.assertEqual(code, 3, self.text)
-        out = self.out.getvalue()
-        self.assertIn("run: partial (sheet: budget_exhausted)", out)
-        self.assertIn("requests made: github 4 of 10, provider 2 of 5, sheets 2 of 2", out)
+        self.assertEqual(code, 2, self.text)
+        self.assertIn("failing gates: REPO_SIGNALS_SHEETS_MAX_CALLS of at least 5", self.text)
+        self.assertEqual(self.calls(), (0, 0))
         self.assertEqual(self.rows(), [])
 
     def test_three_separate_budgets(self):
