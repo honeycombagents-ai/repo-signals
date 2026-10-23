@@ -1,12 +1,20 @@
 """Every Google endpoint, JWT claim and response field name the sheets package uses.
 
-All of it is UNVERIFIED general knowledge, kept in this one block so it can be checked in
-one place. ``auth.py`` and ``client.py`` import from here and hard-code nothing else.
+They are kept in this one block so they can be checked in one place. Some were checked live on
+2026-10-22 and the rest are unchecked general knowledge; the block comment says which.
+``auth.py`` and ``client.py`` import from here and hard-code nothing else.
 """
 
 # --- Google API details -------------------------------------------------------------------
-# UNVERIFIED general knowledge, not checked against Google's documentation:
-# verify against Google's current documentation before first live use.
+# Checked live on 2026-10-22: the token exchange (TOKEN_URL with a form-encoded POST, SCOPE,
+# JWT_HEADER and the claims with a 3600-second lifetime, the grant type and assertion fields,
+# RESP_ACCESS_TOKEN and the key file fields), signing with openssl, the header check and the
+# duplicate skip (SHEETS_HOST, VALUES_URL with a GET on the quoted Sheet1 range, RESP_VALUES for
+# a range with rows) and the append (APPEND_SUFFIX, RAW, INSERT_ROWS, BODY_VALUES).
+# Still unchecked: RESP_EXPIRES_IN, RESP_TOKEN_TYPE, the header write on an empty sheet (a PUT
+# with BODY_RANGE and BODY_MAJOR_DIMENSION), RESP_VALUES being absent for an empty range, and
+# the status codes for an unshared sheet and for rate limiting.
+# For every unchecked item: verify against Google's current documentation before first live use.
 TOKEN_HOST = "oauth2.googleapis.com"
 SHEETS_HOST = "sheets.googleapis.com"
 ALLOWED_HOSTS = frozenset({SHEETS_HOST, TOKEN_HOST})

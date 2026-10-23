@@ -3,19 +3,22 @@
 ## 0.1.0 (2026-10-22)
 
 The first release. Nothing is ever sent by email: Repo Signals writes drafts into a sheet, and a
-person reviews and sends each one. Dry run is the default, and every live command needs dry run
-turned off, a terminal and a typed "yes".
+person reviews and sends each one. Dry run is the default. `run --live` and `collect --live` need
+dry run turned off, a terminal and a typed "yes". `probe-org` makes one real GitHub request with
+only dry run turned off: it needs no terminal and no typed "yes".
 
 ### Checked live
 
-These were checked against the real services on 2026-10-22:
+These were checked against the real services, GitHub on 2026-10-21 and the others on
+2026-10-22:
 
-- **GitHub collect:** the organisation lookup, the organisation search, the repository search
-  and its qualifiers.
-- **Hunter domain search (one lookup):** the endpoint, the `X-API-KEY` header, the `domain` and `limit`
-  parameters, and the response fields for email, position, first and last name and confidence.
-- **Apollo people search (one lookup):** the `api_search` path, the `x-api-key` header, the request body
-  (`q_organization_domains_list`, `person_titles`, `per_page`), the `people` key, and the
+- **GitHub collect (2026-10-21):** the organisation lookup, the organisation search, the
+  repository search, the search qualifiers, the rate-limit headers and the version header.
+- **Hunter domain search (one lookup):** the endpoint, the `X-API-KEY` header, the `domain` and
+  `limit` parameters, the `data` and `emails` wrapper keys, and the response fields for email,
+  position, first and last name and confidence.
+- **Apollo people search (one lookup):** the `api_search` path, the `x-api-key` header, the request
+  body (`q_organization_domains_list`, `person_titles`, `per_page`), the `people` key, and the
   `first_name` and `title` fields. Search returns first names and titles and no email
   addresses.
 - **Google Sheets:** the token exchange, signing with openssl, the header check, the append and
@@ -25,10 +28,20 @@ These were checked against the real services on 2026-10-22:
 
 ### Not checked live
 
-- **Hunter:** the seniority and department filters, the credits field, the error ids and the
-  `Retry-After` behaviour.
-- **Apollo:** what `has_email` means, the largest `per_page`, the error ids and the `Retry-After`
-  behaviour.
+- **GitHub:** the `Accept` media type, the token scheme, the page-size parameter and its largest
+  value, the response field names and the fields kept from each response, the 422 message for an
+  org the caller cannot see, the rate-limit statuses and secondary rate limits, and the search
+  rate ceiling. GitHub's documentation has not been re-read.
+- **Hunter:** the largest limit, the seniority and department filters, the confidence score
+  range, the error statuses and `Retry-After`, the error body and error ids, the credits field,
+  and how many credits one search costs.
+- **Apollo:** what `has_email` means, the largest `per_page`, the `page` parameter, whether
+  search spends credits, the error body and error ids, the error statuses and `Retry-After`,
+  the fields that were not in the results (full name, last name, email and email status), and
+  how many credits one search costs.
+- **Google Sheets:** the `expires_in` and `token_type` fields of the token response, the header
+  write on an empty sheet, the response for an empty range, and the status codes for an unshared
+  sheet and for rate limiting.
 
 The full lists are in [docs/hunter.md](docs/hunter.md), [docs/apollo.md](docs/apollo.md),
 [docs/google-sheets.md](docs/google-sheets.md) and [docs/github-client.md](docs/github-client.md).
@@ -39,4 +52,4 @@ The full lists are in [docs/hunter.md](docs/hunter.md), [docs/apollo.md](docs/ap
   budget (see [docs/apollo.md](docs/apollo.md)).
 - **`doctor --online`.** The flag is accepted but does nothing yet.
 - **A headless live mode.** This is a deliberate non-goal: a person reads the plan and types
-  "yes" before every live run.
+  "yes" before every `run --live` and `collect --live`.

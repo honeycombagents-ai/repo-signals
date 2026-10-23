@@ -328,7 +328,8 @@ response is parsed, so excluded data never reaches Evidence, the report or a cac
 **What is stored:** nothing on disk by default. Evidence lives in memory and is passed to the
 drafter's `evidence_lookup`.
 
-**v1 ships no cache (decided).** A cache, if one is added after v1, would:
+**v1 ships no cache, and none is planned for v1 (decided).** There is no cache command. If a
+cache were ever added after v1, it would:
 
 - live in a directory named by a new setting, created with mode 0700, with files at mode 0600;
 - hold only allowlisted fields (org login, repository full name, `html_url`, language,
@@ -336,7 +337,7 @@ drafter's `evidence_lookup`.
 - be keyed by a hash of the request path and query, never including the token;
 - expire entries after 24 hours by default, with a maximum of 7 days;
 - be capped at 10 MB, evicting the oldest entries first;
-- be cleared by a `repo-signals cache purge` command, which deletes only files it created; and
+- be cleared only by an explicit command that deletes only files it created; and
 - be reported by `doctor` as entry count and size only.
 
 ## 7. Terms, ethics and limits

@@ -24,8 +24,9 @@
 
 An empty variable counts as unset. Surrounding whitespace is an error, not
 something to trim. Dry run is on by default. Turning it off only allows the
-live commands (probe-org, collect --live); collect --live still asks for
-confirmation every time. Errors name the variable, never its value.
+live commands (probe-org, collect --live, run --live); collect --live and
+run --live still ask for confirmation every time, and probe-org does not.
+Errors name the variable, never its value.
 """
 import os
 import re

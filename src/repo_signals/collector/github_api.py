@@ -9,7 +9,8 @@ Every call is charged to the CallBudget BEFORE it is sent, goes through ``http.H
 Authorization header, and keeps only allowlisted fields from the response. A rate-limit response
 (403, 429, or no requests remaining) stops the client: no further call is made in that run.
 It never sleeps and never retries. In dry run (the default) it builds no transport and every call
-raises ``dry_run``. It is NOT reachable from the command line.
+raises ``dry_run``. It is reachable from the command line only through the gated ``probe-org``,
+``collect --live`` and ``run --live``.
 """
 import re
 from datetime import date, datetime
@@ -25,11 +26,13 @@ from .signal import (REPOS_PER_TARGET_AND_TERM, TERM_MAX_CHARS, TERM_MIN_CHARS, 
                      _LOGIN_RE, _TERM_RE)
 
 # --- GitHub API details --------------------------------------------------------------------
-# UNVERIFIED general knowledge, not checked against GitHub's documentation:
+# Checked live on 2026-10-21: the API host, the org lookup, org search and repository search
+# paths, the query parameter, the search qualifiers, the rate-limit headers and the version
+# header behaved as assumed. Still unchecked: the Accept media type, the token scheme, the
+# page-size parameter and its largest value, the response field names and the kept keys, the
+# 422 org-not-visible message, and the rate-limit statuses. GitHub's documentation has not been
+# re-read. For every unchecked item:
 # verify against GitHub's current documentation before first live use.
-# Checked live on 2026-10-21: the org lookup, org search, repository search, the qualifiers,
-# the rate-limit headers and the version header behaved as assumed. GitHub's documentation has
-# not been re-read yet, so the details above are still marked unverified.
 API_HOST = "api.github.com"
 API_BASE = "https://api.github.com"
 ALLOWED_HOSTS = frozenset({API_HOST})

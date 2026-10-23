@@ -43,11 +43,13 @@ openssl version
 
 ## 2. Install
 
-From the folder that holds the repository, create a virtual environment and install into it.
-The environment lives in `.venv` inside the repository folder, which this repository's
+Clone the repository and move into its folder, then create a virtual environment and install
+into it. The environment lives in `.venv` inside the repository folder, which this repository's
 `.gitignore` already ignores, so it is never committed:
 
 ```sh
+git clone https://github.com/honeycombagents-ai/repo-signals.git
+cd repo-signals
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -e .

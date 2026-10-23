@@ -83,36 +83,38 @@ response body, an org name or a term.
 | `bad_term`, `bad_org`, `bad_name`, `bad_language`, `bad_date` | a value failed validation; no request was made |
 | `timeout`, `malformed_json`, `response_too_large`, `redirect_refused`, `network_error`, `tls_error` | from `http.HttpClient` |
 
-## Unverified details checklist
+## Checked and unchecked API details
 
-**Live check, 2026-10-21:** the org lookup, the org search, the repository search, the search
-qualifiers, the rate-limit headers and the version header were checked live and behaved as
-assumed. GitHub's documentation has **not** been re-read yet, so the items below stay open until it
-is.
+Everything GitHub-specific sits in one constants block at the top of `github_api.py`. The block
+says which details were checked live and, for every other one, "verify against GitHub's current
+documentation before first live use". GitHub's documentation has **not** been re-read, and the
+tests use a fake GitHub built to the same assumptions, so passing tests do not show that the
+assumptions are right.
 
-Everything GitHub-specific sits in one constants block at the top of `github_api.py`, marked
-"verify against GitHub's current documentation before first live use". Before the first live
-call, check:
+Checked live on 2026-10-21 (the org lookup, the org search, the repository search, the search
+qualifiers, the rate-limit headers and the version header behaved as assumed):
 
-- [ ] `API_HOST` and `API_BASE`: the REST API host
-- [ ] `ORG_PATH`, `SEARCH_ORGS_PATH`, `SEARCH_REPOS_PATH`: the three paths
-- [ ] `PARAM_QUERY`, `PARAM_PER_PAGE`: the query parameter names, and the largest page size
-- [ ] `HEADER_ACCEPT` and `MEDIA_TYPE`: the JSON media type
-- [ ] `HEADER_API_VERSION` and `API_VERSION`: whether a version header is required, and its value
-- [ ] `HEADER_AUTHORIZATION` and `AUTH_SCHEME`: how a token is sent
-- [ ] `HEADER_RATE_REMAINING`, `HEADER_RATE_RESET`: the rate-limit header names, and that reset
-      is in epoch seconds
-- [ ] `QUALIFIER_TYPE_ORG`, `QUALIFIER_ORG`, `QUALIFIER_IN`, `QUALIFIER_NO_FORKS`,
+- [x] `API_HOST` and `API_BASE`: the REST API host
+- [x] `ORG_PATH`, `SEARCH_ORGS_PATH`, `SEARCH_REPOS_PATH`: the three paths
+- [x] `PARAM_QUERY`: the query parameter name
+- [x] `HEADER_API_VERSION` and `API_VERSION`: the version header and its value
+- [x] `HEADER_RATE_REMAINING`, `HEADER_RATE_RESET`: the rate-limit header names, with reset in
+      epoch seconds
+- [x] `QUALIFIER_TYPE_ORG`, `QUALIFIER_ORG`, `QUALIFIER_IN`, `QUALIFIER_NO_FORKS`,
       `QUALIFIER_NO_ARCHIVED`, `QUALIFIER_LANGUAGE`, `QUALIFIER_PUSHED_AFTER`: the search
-      qualifiers and their syntax
-- [ ] confirm the `in:name` qualifier (`QUALIFIER_IN`) against GitHub's current documentation:
-      that it limits a repository search to names only
+      qualifiers and their syntax, including `in:name` limiting a repository search to names
+
+Still unchecked, so check each of these before relying on it:
+
+- [ ] `HEADER_ACCEPT` and `MEDIA_TYPE`: the JSON media type
+- [ ] `HEADER_AUTHORIZATION` and `AUTH_SCHEME`: how a token is sent
+- [ ] `PARAM_PER_PAGE`: the page-size parameter name, and the largest page size
+- [ ] `RESP_ITEMS`, `RESP_TOTAL_COUNT`, `RESP_INCOMPLETE`: the search response fields
+- [ ] `ORG_KEYS`, `CANDIDATE_KEYS`, `REPO_KEYS`, `OWNER_KEYS`: the fields kept from each response
 - [ ] `RESP_ERRORS`, `RESP_ERROR_MESSAGE` and `ORG_NOT_VISIBLE_MESSAGE`: that a search naming an
       org the caller cannot see returns 422 with exactly this text in `errors[].message`: "The
       listed users and repositories cannot be searched either because the resources do not
       exist or you do not have permission to view them." Only that exact text gives
       `org_not_visible`; the body is compared, never printed or stored
-- [ ] `RESP_ITEMS`, `RESP_TOTAL_COUNT`, `RESP_INCOMPLETE`: the search response fields
-- [ ] `ORG_KEYS`, `CANDIDATE_KEYS`, `REPO_KEYS`, `OWNER_KEYS`: the fields kept from each response
 - [ ] that 403 and 429 are the rate-limit statuses, and what a secondary rate limit looks like
 - [ ] the search rate ceiling used by the plan (`plan.SEARCH_RATE_CEILING_PER_MINUTE`, 30)

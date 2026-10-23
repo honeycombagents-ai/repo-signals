@@ -1,7 +1,8 @@
 """``repo-signals collect --dry-run``: validate the signal file and print the request plan.
 
-Dry run is the only mode in this version: it requests nothing and prints no URL. Without
-``--dry-run`` the command says live collection is not implemented yet and exits 2.
+It requests nothing and prints no URL. Live collection is in ``collector/live.py``. The command
+line never calls ``run(dry_run=False)``: ``collect`` with neither flag prints a usage line and
+exits 2. That older branch is kept and still prints LIVE_NOT_IMPLEMENTED.
 """
 import os
 import sys

@@ -2,8 +2,10 @@
 
 **Status: early release, dry run by default.** Hunter's domain search was checked live on
 2026-10-22. Apollo's people search was checked live the same day, but what its `has_email` flag
-means and its error ids are not checked live. Other API details are listed as unchecked in
-[docs/hunter.md](docs/hunter.md) and [docs/apollo.md](docs/apollo.md).
+means and its error ids are not checked live. GitHub was checked live on 2026-10-21 and Google
+Sheets on 2026-10-22. Other API details are listed as unchecked in [docs/hunter.md](docs/hunter.md),
+[docs/apollo.md](docs/apollo.md), [docs/github-client.md](docs/github-client.md) and
+[docs/google-sheets.md](docs/google-sheets.md).
 
 What changed in each release: [CHANGELOG.md](CHANGELOG.md).
 
@@ -37,8 +39,10 @@ Repo Signals is built so that someone who already uses Hunter or Apollo can depl
 
 ## What it does
 
-Nothing makes a network call unless you turn dry run off, and every live command is gated
-(`collect --live` and `run --live` also need a typed "yes").
+Nothing makes a network call unless you turn dry run off. `run --live` and `collect --live` also
+need a terminal and a typed "yes". `probe-org` is the exception: it makes one real GitHub request
+with only dry run turned off, and it needs no terminal and no typed "yes". `run` without `--live`
+is the dry run and needs neither.
 
 - **collect**: turns a signal file into GitHub evidence. `collect --dry-run` validates the file and
   prints the plan with no network call. See [docs/signal-file.md](docs/signal-file.md) and
@@ -66,12 +70,23 @@ implemented.
 
 ## Quick start
 
+You need Python 3.12 or newer. Clone the repository, move into it, and install into a virtual
+environment:
+
 ```sh
-python3 -m pip install -e .                    # Python 3.12 or newer
-repo-signals init --dir ~/repo-signals-config  # starter files, offline
-repo-signals doctor                            # offline checks: PASS, WARN or FAIL per line
-repo-signals run                               # dry run: no network, nothing written
+git clone https://github.com/honeycombagents-ai/repo-signals.git
+cd repo-signals
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -e .
+repo-signals init --dir ~/repo-signals-config
+repo-signals doctor
+repo-signals run
 ```
+
+`init` creates the starter files, offline. `doctor` runs the offline checks and prints PASS, WARN
+or FAIL per line. `run` on its own is the dry run: no network, nothing written. The `.venv`
+folder is ignored by the repository's `.gitignore`, so it is never committed.
 
 Without installing, you can run it from the repo root:
 
@@ -99,7 +114,7 @@ Settings come from environment variables only:
 | `REPO_SIGNALS_SENDER_NAME`, `_SENDER_ROLE`, `_ORG_NAME`, `_POSTAL_ADDRESS`, `_OPTOUT_TEXT` | sender details put in every draft | unset (WARN; drafting refuses) |
 | `REPO_SIGNALS_SUPPRESSION_FILE` | path to a suppression list (one email or domain per line) | unset (WARN) |
 | `REPO_SIGNALS_SIGNAL_FILE` | path to the collector's signal file (TOML) | unset (WARN) |
-| `REPO_SIGNALS_DRY_RUN` | `true`, or exactly `false` to allow `probe-org` and `collect --live` | `true` |
+| `REPO_SIGNALS_DRY_RUN` | `true`, or exactly `false` to allow `probe-org`, `collect --live` and `run --live` | `true` |
 
 `doctor` names variables but never prints their values. `doctor --online` is accepted but not
 implemented yet.

@@ -1,4 +1,5 @@
-"""The GitHub signal collector. This PR: the signal definition and the request plan only.
+"""The GitHub signal collector: the signal file, the request plan, the GitHub client,
+organisation matching, filters, Evidence and the orchestration that ties them together.
 
-There is no network code here yet. See docs/collector-design.md and docs/signal-file.md.
+See docs/collector-design.md, docs/signal-file.md and docs/live-collection.md.
 """

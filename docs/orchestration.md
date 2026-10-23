@@ -1,8 +1,10 @@
 # Collector orchestration
 
 `src/repo_signals/collector/orchestrate.py` runs the collector's steps in order and turns a signal
-file into Evidence for the drafter. It is **not wired to the command line**: `repo-signals
-collect` without `--dry-run` still prints `live collection is not implemented yet` and exits 2.
+file into Evidence for the drafter. `repo-signals collect --live` and `repo-signals run --live`
+call it after their gates and a typed "yes" (see [live-collection.md](live-collection.md) and
+[run.md](run.md)). `repo-signals collect` with neither `--dry-run` nor `--live` prints a usage
+line and exits 2.
 It takes any client with `get_org`, `search_orgs` and `search_repos`. It never builds one and
 contains no HTTP code, and the tests use a fake client.
 

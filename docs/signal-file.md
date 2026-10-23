@@ -12,8 +12,10 @@ repo-signals collect --dry-run
 repo-signals doctor          # reports whether the file parses (counts only)
 ```
 
-`repo-signals collect` without `--dry-run` prints `live collection is not implemented yet` and
-exits 2. The design is in [collector-design.md](collector-design.md).
+`repo-signals collect` with neither `--dry-run` nor `--live` prints
+`usage: repo-signals collect --dry-run | --live` and exits 2. Live collection is described in
+[live-collection.md](live-collection.md), and the design is in
+[collector-design.md](collector-design.md).
 
 ## Example 1: one library term, a user-named org and a domain-only target
 

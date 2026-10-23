@@ -142,6 +142,12 @@ stdin. The private key goes into a temp file created with mode 0600, and the fil
 a `finally` block, even when signing fails. The key is never on the command line, in an
 environment variable or in a log.
 
+Note that the private key does touch the disk: for each signature it is written to a new temp
+file with mode 0600 in your temp folder (`TMPDIR`), and the file is deleted as soon as openssl
+returns. A crash, a forced kill or a power cut during signing can leave that file behind, so a
+key file named `repo-signals-*.pem` in your temp folder should be deleted. A Signer that does
+not use openssl avoids this.
+
 **You can supply your own Signer**, for example one backed by a cloud KMS or a hardware key:
 
 ```python
@@ -175,31 +181,38 @@ sleeps and never retries.
 - The data you write is personal data. Share the sheet only with people who need it.
 - This is not legal advice.
 
-## Unverified API details
+## Checked and unchecked API details
 
-The endpoints, JWT claim names and response field names come from general knowledge. **They have
-not been checked against Google's documentation.** They all sit in one constants block in
-`src/repo_signals/sheets/google_api.py`, marked "verify against Google's current documentation
-before first live use". The tests use a fake Google built to the same assumptions, so passing
-tests do not show that the assumptions are right.
+The endpoints, JWT claim names and response field names first came from general knowledge. Some
+of them were checked live on 2026-10-22: the token exchange, signing with openssl, the header
+check, the append and the duplicate skip. The rest are still unchecked. They all sit in one
+constants block in `src/repo_signals/sheets/google_api.py`, which says which are checked and,
+for every other one, "verify against Google's current documentation before first live use". The
+tests use a fake Google built to the same assumptions, so passing tests do not show that the
+assumptions are right.
 
-Before the first live write, check each of these:
+Checked live on 2026-10-22:
 
-- [ ] `TOKEN_URL` and `TOKEN_HOST`: the OAuth token endpoint, and that it accepts a form-encoded
-      POST
-- [ ] `SCOPE`: the spreadsheets scope string
-- [ ] `JWT_HEADER` and the claims `CLAIM_ISSUER`, `CLAIM_SCOPE`, `CLAIM_AUDIENCE`,
-      `CLAIM_ISSUED_AT`, `CLAIM_EXPIRES_AT`, plus `JWT_LIFETIME_SECONDS` (assumed at most one hour)
-- [ ] `FORM_GRANT_TYPE`, `GRANT_TYPE_JWT_BEARER`, `FORM_ASSERTION`
-- [ ] `RESP_ACCESS_TOKEN`, `RESP_EXPIRES_IN`, `RESP_TOKEN_TYPE`
-- [ ] the key file fields `CRED_TYPE`, `CRED_TYPE_SERVICE_ACCOUNT`, `CRED_CLIENT_EMAIL`,
+- [x] `TOKEN_URL` and `TOKEN_HOST`: the OAuth token endpoint, with a form-encoded POST
+- [x] `SCOPE`: the spreadsheets scope string
+- [x] `JWT_HEADER` and the claims `CLAIM_ISSUER`, `CLAIM_SCOPE`, `CLAIM_AUDIENCE`,
+      `CLAIM_ISSUED_AT`, `CLAIM_EXPIRES_AT`, with `JWT_LIFETIME_SECONDS` at one hour
+- [x] `FORM_GRANT_TYPE`, `GRANT_TYPE_JWT_BEARER`, `FORM_ASSERTION`
+- [x] `RESP_ACCESS_TOKEN`: the access token field
+- [x] the key file fields `CRED_TYPE`, `CRED_TYPE_SERVICE_ACCOUNT`, `CRED_CLIENT_EMAIL`,
       `CRED_PRIVATE_KEY`
-- [ ] `SHEETS_HOST`, `VALUES_URL` and `APPEND_SUFFIX`: the values read, append and update
-      endpoints and their HTTP methods (GET, POST and PUT)
-- [ ] `PARAM_VALUE_INPUT_OPTION` = `RAW`, and `PARAM_INSERT_DATA_OPTION` = `INSERT_ROWS` (append
-      inserts rows instead of overwriting)
-- [ ] `BODY_VALUES`, `BODY_RANGE`, `BODY_MAJOR_DIMENSION`, `RESP_VALUES` (assumed absent for an
-      empty range)
-- [ ] how a sheet tab name must be quoted in an A1 range (the default tab is `Sheet1`)
+- [x] that `openssl dgst -sha256 -sign` gives an RS256 signature for a service-account key
+- [x] `SHEETS_HOST` and `VALUES_URL` with a GET: reading the header row and the existing rows,
+      with the tab quoted in the A1 range (the default tab is `Sheet1`)
+- [x] `RESP_VALUES` for a range that has rows
+- [x] `APPEND_SUFFIX` with a POST, `PARAM_VALUE_INPUT_OPTION` = `RAW`,
+      `PARAM_INSERT_DATA_OPTION` = `INSERT_ROWS` and `BODY_VALUES`: the append inserts rows
+- [x] the duplicate skip: a second run appended no copy of a person already in the sheet
+
+Still unchecked, so check each of these before relying on it:
+
+- [ ] `RESP_EXPIRES_IN` and `RESP_TOKEN_TYPE`: the other token response fields
+- [ ] the header write on an empty sheet: `VALUES_URL` with a PUT, `BODY_RANGE` and
+      `BODY_MAJOR_DIMENSION`
+- [ ] `RESP_VALUES` being absent for an empty range
 - [ ] the status codes for an unshared sheet (assumed 404 or 403) and for rate limiting
-- [ ] that `openssl dgst -sha256 -sign` gives an RS256 signature for your key format

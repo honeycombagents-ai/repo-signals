@@ -2,7 +2,7 @@
 
 ``collect(signal, client, suppression, budget_cap, today)`` takes any client with ``get_org``,
 ``search_orgs`` and ``search_repos`` (see CollectorClient). It never builds a client and imports
-no HTTP code. It is NOT wired to the command line.
+no HTTP code. ``collect --live`` and ``run --live`` call it after their gates and a typed "yes".
 
 1. The plan is built first. A plan over the budget or the search-rate ceiling is refused before
    any client call.

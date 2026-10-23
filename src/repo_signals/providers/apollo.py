@@ -32,7 +32,9 @@ from .fake import FakeProvider
 # header, the body fields q_organization_domains_list, person_titles and per_page, the people
 # key, and the first_name and title fields. Search hides last names and returns only a
 # has_email flag, with no email and no email_status. Still unchecked: what has_email means,
-# the largest per_page, the error ids, and the Retry-After behaviour.
+# the largest per_page, the page parameter, whether search spends credits, the error body and
+# error ids, the error statuses and the Retry-After behaviour, the fields that were not in the
+# results (name, last_name, email, email_status), and how many credits one search costs.
 # verify against Apollo's current API documentation before first live use.
 API_KEY_ENV = "APOLLO_API_KEY"
 API_HOST = "api.apollo.io"

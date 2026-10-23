@@ -155,7 +155,7 @@ Still unchecked, so check each of these before relying on it:
       an exhausted plan
 - [ ] `CREDITS_REMAINING_PATHS`: whether the domain-search response carries a remaining count at
       all. If it does not, `credits_remaining` stays unset.
-- [ ] how many credits one domain search costs, so you can size `REPO_SIGNALS_MAX_CALLS`
+- [ ] how many credits one domain search costs, so you can size `REPO_SIGNALS_PROVIDER_MAX_CALLS`
 
 A synthetic response in the assumed shape (made up, not captured from Hunter):
 
