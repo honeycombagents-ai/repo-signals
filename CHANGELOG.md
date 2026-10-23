@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Hunter limit checked live (2026-10-23, one account, domain search):** a limit of 3 returned 3
+  people, a limit of 10 returned 10, and a limit of 100 was refused with HTTP 400. Whether the
+  refusal is a plan cap or Hunter's global maximum is unknown, and the credit cost of a larger
+  limit is unchecked. `MAX_LIMIT` stays 100 in the code as an unchecked upper bound, not a
+  working value; `repo-signals run` still asks for 3.
 - **CI scans the pull request head.** The checkout in `.github/workflows/scan.yml` now uses the
   pull request's head commit instead of GitHub's temporary merge commit; push events still scan
   the pushed commit.

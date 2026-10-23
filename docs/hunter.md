@@ -84,7 +84,9 @@ people = provider.find_people("example.com", ("CTO", "VP Engineering"), 5)
   (`missing_email`, `missing_name`, `missing_title`, `filtered_by_title`), and
   `repo-signals run` prints them as one line per domain, for example
   `people dropped for example.com: filtered_by_title 2`.
-- At most `limit` people come back. The request asks for at most 100.
+- At most `limit` people come back. `repo-signals run` asks for 3. The code allows a limit up
+  to `MAX_LIMIT` (100), but one account saw a limit of 100 refused with HTTP 400 on 2026-10-23,
+  so only limits up to 10 are known to work.
 
 ## Errors
 
@@ -158,9 +160,17 @@ Checked live on 2026-10-22 (one lookup, three results, emails present):
       position, first name and last name fields
 - [x] `FIELD_SCORE`: the confidence field
 
+Checked live on 2026-10-23 (one account, domain search):
+
+- [x] `PARAM_LIMIT` up to 10: a limit of 3 returned 3 people and a limit of 10 returned 10
+- [x] a limit of 100 was refused with HTTP 400. Whether that is this account's plan cap or
+      Hunter's global maximum is unknown.
+
 Still unchecked, so check each of these before relying on it:
 
-- [ ] `MAX_LIMIT`: the largest allowed limit
+- [ ] `MAX_LIMIT`: the largest allowed limit. For the account checked on 2026-10-23 it is between
+      10 and 99 (10 worked and 100 was refused); other plans may differ. `MAX_LIMIT = 100` in the
+      code is an unchecked upper bound, not a working value.
 - [ ] `PARAM_SENIORITY`, `SENIORITY_VALUES`, `PARAM_DEPARTMENT`, `DEPARTMENT_VALUES`: the
       seniority and department filters
 - [ ] `SCORE_MAX`: the range of the confidence score (assumed 0 to 100)
@@ -170,7 +180,8 @@ Still unchecked, so check each of these before relying on it:
       an exhausted plan
 - [ ] `CREDITS_REMAINING_PATHS`: whether the domain-search response carries a remaining count at
       all. If it does not, `credits_remaining` stays unset.
-- [ ] how many credits one domain search costs, so you can size `REPO_SIGNALS_PROVIDER_MAX_CALLS`
+- [ ] how many credits one domain search costs, and whether a larger limit costs more, so you can
+      size `REPO_SIGNALS_PROVIDER_MAX_CALLS`
 
 A synthetic response in the assumed shape (made up, not captured from Hunter):
 

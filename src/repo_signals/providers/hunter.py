@@ -24,10 +24,15 @@ from .fake import FakeProvider
 # --- Hunter API details ------------------------------------------------------------------
 # Checked against a real Hunter account on 2026-10-22: the endpoint, the X-API-KEY header,
 # the domain and limit parameters, the data and emails wrapper keys, and the response fields
-# for email, position, first and last name and confidence. Still unchecked: the largest
-# allowed limit, the seniority and department filters, the score range, the error status
-# codes and Retry-After, the error body and error ids, the credits-remaining field, and how
-# many credits one search costs. Hunter has no title parameter: titles are matched here as a
+# for email, position, first and last name and confidence. Checked live on 2026-10-23 (one
+# account, domain search): the limit parameter works up to 10 (limit=3 returned 3 people and
+# limit=10 returned 10), and limit=100 was refused with HTTP 400. Whether that refusal is a
+# plan cap or Hunter's global maximum is unknown. MAX_LIMIT = 100 is therefore not accepted on
+# at least one plan: it is an unchecked upper bound, not a working value. Still unchecked: the
+# largest allowed limit (between 10 and 99 for that account), the seniority and department
+# filters, the score range, the error status codes and Retry-After, the error body and error
+# ids, the credits-remaining field, and how many credits one search costs (also whether a
+# larger limit costs more). Hunter has no title parameter: titles are matched here as a
 # case-insensitive substring of FIELD_POSITION, so "CTO" does not match "Chief Technology Officer".
 # verify against Hunter's current API documentation before first live use.
 API_KEY_ENV = "HUNTER_API_KEY"
