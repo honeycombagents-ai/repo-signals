@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **CI scans the pull request head.** The checkout in `.github/workflows/scan.yml` now uses the
+  pull request's head commit instead of GitHub's temporary merge commit; push events still scan
+  the pushed commit.
 - **The history scan reads git by structure** (`scripts/scan.py --history`): it walks every ref
   (branches, tags, remotes), takes changed files from NUL-delimited `git diff-tree` output, and
   also scans commit messages, author and committer names and emails, annotated tags and ref
