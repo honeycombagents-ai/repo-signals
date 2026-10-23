@@ -52,13 +52,14 @@ def check_gates(environ, registry=None, *, signer=None, which=None) -> Gates:
     if settings.dry_run:
         failures.append(config.DRY_RUN)
 
-    signal = None
+    signal, signal_code = None, None
     try:
         signal = signal_from_env(environ)
-    except SignalError:
-        pass
+    except SignalError as e:
+        signal_code = e.code   # a code-only string, never a path or file content
     if signal is None:
-        failures.append(config.SIGNAL_FILE)
+        failures.append(config.SIGNAL_FILE if signal_code is None
+                        else f"{config.SIGNAL_FILE} ({signal_code})")
 
     sender = None
     try:

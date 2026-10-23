@@ -70,7 +70,10 @@ sender. It prints:
 names only the variables or conditions that fail.
 
 1. Dry run is off (`REPO_SIGNALS_DRY_RUN=false`).
-2. `REPO_SIGNALS_SIGNAL_FILE` is set and the file parses.
+2. `REPO_SIGNALS_SIGNAL_FILE` is set and the file parses. When the file does not load, the
+   failing gate carries the signal-file code, for example
+   `REPO_SIGNALS_SIGNAL_FILE (signal_target_1_bad_org)` for a domain typed as `org`, never the
+   path or any file content. An unset variable is named `REPO_SIGNALS_SIGNAL_FILE` alone.
 3. The five sender variables are set (see [drafting.md](drafting.md)).
 4. The selected provider's own variables are set (for example `HUNTER_API_KEY`).
 5. `REPO_SIGNALS_SHEET_ID` and `REPO_SIGNALS_GOOGLE_CREDENTIALS` are set.
