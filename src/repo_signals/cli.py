@@ -35,7 +35,7 @@ def main(argv=None) -> int:
         return doctor.run(online=args.online)
     if args.command == "collect":
         if args.dry_run:
-            return collect.run(dry_run=True)
+            return collect.run()
         if args.live:
             from .collector import live  # loaded only for the live path
             return live.run_live(os.environ)

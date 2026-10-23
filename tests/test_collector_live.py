@@ -395,8 +395,8 @@ class Unchanged(Case):
                 out, err = io.StringIO(), io.StringIO()
                 with mock.patch("socket.socket", side_effect=AssertionError("socket")), \
                         mock.patch.object(live, "GitHubClient", side_effect=AssertionError):
-                    code = dry_run.run(dry_run=True, environ=self.env(**{config.DRY_RUN: dry}),
-                                       out=out, err=err)
+                    code = dry_run.run(environ=self.env(**{config.DRY_RUN: dry}), out=out,
+                                       err=err)
                 self.assertEqual(code, 0, err.getvalue())
                 self.assertEqual(out.getvalue().splitlines()[0],
                                  "collect: dry run, nothing requested")
@@ -411,7 +411,7 @@ class Unchanged(Case):
         run_live.assert_called_once()
         run_probe.assert_called_once()
         self.assertEqual(run_probe.call_args.args[0], "example-org")
-        run_dry.assert_called_once_with(dry_run=True)
+        run_dry.assert_called_once_with()
         with mock.patch("sys.stderr", io.StringIO()) as err:
             self.assertEqual(main(["collect"]), 2)
         self.assertEqual(err.getvalue(), "usage: repo-signals collect --dry-run | --live\n")

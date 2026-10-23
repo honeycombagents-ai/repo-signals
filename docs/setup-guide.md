@@ -281,9 +281,11 @@ start the run:
 repo-signals run --live
 ```
 
-It prints the plan: the target, the term, the most calls each service could use, the provider
-and the first 4 characters of the sheet id. Read it, then type exactly `yes`. Anything else stops
-it with nothing requested.
+It prints the plan: the target and the term; the call budgets, with the most GitHub and provider
+calls the run could make and, for the sheet, a minimum of 6 calls for the header check and one
+append, plus one more per extra append, with `REPO_SIGNALS_SHEETS_MAX_CALLS` as the hard limit;
+the provider; and the first 4 characters of the sheet id. Read it, then type exactly `yes`.
+Anything else stops it with nothing requested.
 
 Dry run stays off in this shell until the clean-up step, so do not stop here: finish by running
 the clean-up in step 14.

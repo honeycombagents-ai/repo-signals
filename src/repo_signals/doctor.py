@@ -105,7 +105,8 @@ def check_dry_run(settings, problem=None):
         return [(FAIL, problem)]
     if settings.dry_run:
         return [(PASS, "dry run is on: no paid calls, nothing written")]
-    return [(WARN, "dry run is off: probe-org and collect --live can make GitHub requests")]
+    return [(WARN, "dry run is off: probe-org, collect --live and run --live can make GitHub "
+                   "requests")]
 
 
 def check_live_armed(environ, settings):

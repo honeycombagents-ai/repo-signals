@@ -1,8 +1,7 @@
 """``repo-signals collect --dry-run``: validate the signal file and print the request plan.
 
-It requests nothing and prints no URL. Live collection is in ``collector/live.py``. The command
-line never calls ``run(dry_run=False)``: ``collect`` with neither flag prints a usage line and
-exits 2. That older branch is kept and still prints LIVE_NOT_IMPLEMENTED.
+It requests nothing and prints no URL. Live collection is in ``collector/live.py``; ``collect``
+with neither flag prints a usage line and exits 2 (see ``cli.py``).
 """
 import os
 import sys
@@ -14,15 +13,11 @@ from .plan import SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan
 from .signal import SignalError, signal_from_env
 
 PREVIEW_REQUESTS = 5
-LIVE_NOT_IMPLEMENTED = "live collection is not implemented yet"
 
 
-def run(dry_run=False, environ=None, out=None, err=None) -> int:
+def run(environ=None, out=None, err=None) -> int:
     out = out if out is not None else sys.stdout
     err = err if err is not None else sys.stderr
-    if not dry_run:
-        print(LIVE_NOT_IMPLEMENTED, file=err)
-        return 2
     environ = os.environ if environ is None else environ
     try:
         budget_cap = config.parse_max_calls(environ)

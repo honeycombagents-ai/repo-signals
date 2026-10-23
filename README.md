@@ -100,6 +100,8 @@ Before your first live run, work through the
 
 Step by step from a clean machine: [docs/setup-guide.md](docs/setup-guide.md). Error codes and drop counts: [docs/troubleshooting.md](docs/troubleshooting.md).
 
+To contribute, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 Settings come from environment variables only:
 
 | variable | meaning | default |

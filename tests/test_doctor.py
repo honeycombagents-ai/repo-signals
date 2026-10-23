@@ -181,8 +181,8 @@ class FailPaths(unittest.TestCase):
     def test_dry_run_off_warns_and_arms(self):
         code, out = run(dict(FULL), settings=Settings(dry_run=False))
         self.assertEqual(code, 0, out)
-        self.assertIn("WARN dry run is off: probe-org and collect --live can make GitHub "
-                      "requests", out)
+        self.assertIn("WARN dry run is off: probe-org, collect --live and run --live can make "
+                      "GitHub requests", out)
         self.assertIn("WARN live collection is ARMED (dry run is off and "
                       "REPO_SIGNALS_SIGNAL_FILE is set)", out)
 

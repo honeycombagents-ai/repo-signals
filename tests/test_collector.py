@@ -359,11 +359,11 @@ class TmpDir(unittest.TestCase):
 
 
 class Collect(TmpDir):
-    def collect(self, env, dry=True):
+    def collect(self, env):
         out, err = io.StringIO(), io.StringIO()
         with mock.patch("socket.socket", side_effect=AssertionError("socket")), \
                 mock.patch("socket.create_connection", side_effect=AssertionError("socket")):
-            code = dry_run.run(dry_run=dry, environ=env, out=out, err=err)
+            code = dry_run.run(environ=env, out=out, err=err)
         self.out, self.err = out.getvalue(), err.getvalue()
         for text in (self.out, self.err):
             self.assertNotIn("://", text)
@@ -426,11 +426,6 @@ class Collect(TmpDir):
                 self.assertEqual(self.err, message)
                 self.assertNotIn("SENTINEL", self.out + self.err)
 
-    def test_live_mode_refused(self):
-        path = self.write("s.toml", signal_text())
-        self.assertEqual(self.collect({config.SIGNAL_FILE: path}, dry=False), 2)
-        self.assertEqual((self.out, self.err), ("", "live collection is not implemented yet\n"))
-
     def test_cli(self):
         path = self.write("s.toml", signal_text())
         base = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": str(_src.SRC),
@@ -448,10 +443,10 @@ class Collect(TmpDir):
     def test_main_dispatch(self):
         with mock.patch.object(dry_run, "run", return_value=0) as run:
             self.assertEqual(main(["collect", "--dry-run"]), 0)
-            run.assert_called_once_with(dry_run=True)
+            run.assert_called_once_with()
             with mock.patch("sys.stderr", io.StringIO()):
                 self.assertEqual(main(["collect"]), 2)
-            run.assert_called_once_with(dry_run=True)  # bare "collect" never reaches it
+            run.assert_called_once_with()  # bare "collect" never reaches it
 
 
 # ---- doctor ----
@@ -514,7 +509,8 @@ class NoNetwork(unittest.TestCase):
                           "github_api.py", "github_fields.py", "live.py", "matching.py",
                           "orchestrate.py", "plan.py", "signal.py"])
         # github_api.py is the one collector module allowed to use http.HttpClient; it is
-        # tested on its own (test_collector_client.py) and is unreachable from the CLI.
+        # tested on its own (test_collector_client.py) and reached from the CLI only through the
+        # gated probe-org, collect --live and run --live.
         # live.py is the CLI's live path: it builds the client after a typed confirmation and is
         # tested on its own (test_collector_live.py).
         files = [f for f in files if f.name not in ("github_api.py", "live.py")]
