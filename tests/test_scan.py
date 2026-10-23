@@ -310,11 +310,13 @@ class HistoryByStructure(ScanTestCase):
         self.assertRegex(out, rf"tag [0-9a-f]{{12}} message:1: {re.escape(TOKEN_KIND)}")
         self.assertRegex(out, rf"tag [0-9a-f]{{12}} tagger: {re.escape(TOKEN_KIND)}")
 
-    def test_a_disallowed_committer_email_is_caught(self):
+    def test_a_foreign_committer_email_passes(self):
         self.repo.write("a.txt", "clean\n")
         self.repo.git("-c", "user.email=" + j("someone", "@", "example", ".com"), "commit", "-q",
                       "-m", "fine")
-        self.assertRegex(self.history(), r"commit [0-9a-f]{12} committer: email address")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("committer:", out)
 
     def test_utf16_file_with_a_token_is_caught(self):
         data = f"clean\n{TOKEN}\n".encode("utf-16")
@@ -376,6 +378,69 @@ class HistoryByStructure(ScanTestCase):
         commits = [l for l in out.splitlines() if l.startswith("commit ")]
         self.assertEqual(len(commits), 1, out)
         self.assertIn(f"topic.txt:1: {TOKEN_KIND}", commits[0])
+
+
+FOREIGN_EMAIL = j("outside.contributor", "@", "example", ".org")
+NOREPLY_EMAIL = j("12345678+octo-user", "@", "users.noreply.", "git", "hub", ".com")
+
+
+class Identities(ScanTestCase):
+    """Identities get the token checks and the deny-list, but not the email rule."""
+
+    def test_a_foreign_author_email_passes(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit("fine", f"--author=Outside Contributor <{FOREIGN_EMAIL}>")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("author:", out)
+
+    def test_a_committer_with_a_github_style_noreply_address_passes(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.git("-c", "user.name=GitHub", "-c", f"user.email={NOREPLY_EMAIL}", "commit",
+                      "-q", "-m", "Merge pull request #1",
+                      "--author=honeycombagents.ai <noreply@honeycombagents.ai>")
+        self.repo.git("-c", "user.name=GitHub", "-c", f"user.email={NOREPLY_EMAIL}", "tag", "-a",
+                      "v2", "-m", "release")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("committer:", out)
+        self.assertNotIn("tagger:", out)
+
+    def test_a_token_in_an_author_name_still_fails_with_a_foreign_email(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit("fine", f"--author={TOKEN} <{FOREIGN_EMAIL}>")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, rf"commit [0-9a-f]{{12}} author: {re.escape(TOKEN_KIND)}")
+        self.assertNotIn("author: email address", out)
+        self.assertNotIn(TOKEN, out)
+
+    def test_the_denylist_still_applies_to_identities(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit("fine", f"--author=Zzsentinelname <{FOREIGN_EMAIL}>")
+        code, out = self.repo.scan("--history", deny="zzsentinelname")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"commit [0-9a-f]{12} author: deny-list pattern #1")
+        self.assertNotIn("Zzsentinelname", out)
+
+    def test_an_email_in_a_commit_message_still_fails(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit(f"thanks to {FOREIGN_EMAIL}")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"commit [0-9a-f]{12} message:1: email address")
+
+    def test_an_email_in_a_file_still_fails_in_the_tree_and_in_history(self):
+        self.repo.write("a.txt", f"contact {FOREIGN_EMAIL}\n")
+        code, out = self.repo.scan()
+        self.assertEqual(code, 1, out)
+        self.assertIn("a.txt:1: email address", out)
+        self.repo.commit("add")
+        self.repo.remove("a.txt")
+        self.repo.commit("remove")
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"commit [0-9a-f]{12} a\.txt:1: email address")
 
 
 if __name__ == "__main__":

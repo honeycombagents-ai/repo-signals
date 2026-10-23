@@ -6,8 +6,9 @@
   (branches, tags, remotes), takes changed files from NUL-delimited `git diff-tree` output, and
   also scans commit messages, author and committer names and emails, annotated tags and ref
   names. Files with NUL bytes are scanned too, and UTF-16 files with a byte-order mark are
-  decoded. A commit whose author or committer email is not the allowed address now fails the
-  scan, like any other email address.
+  decoded. Author, committer and tagger identities are checked for token-shaped strings and the
+  deny-list but not by the email rule, so commits from contributors and merges made on GitHub
+  pass; the email rule still applies to file content, commit messages and ref names.
 - **Sheet appends are split under the request limit.** New rows go out in order, in appends of
   at most 60 KB each, so a run with many people no longer fails with `payload_too_large` and
   loses every row. Each append is charged to the sheets budget. If one fails, the earlier

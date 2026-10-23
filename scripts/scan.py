@@ -4,6 +4,8 @@
 Scans every tracked file and, with --history, every commit reachable from any ref (branches,
 tags, remotes, notes): the lines each commit added, its message, and its author and committer;
 every annotated tag's message and tagger; every ref name; and any tree or blob a tag points to.
+Author, committer and tagger identities get the token checks and the deny-list but not the email
+rule: contributors and GitHub's merges commit under their own addresses.
 Prints file or commit, line and the KIND of each hit. Never prints the matched text: a file
 name that itself matches is shown as a short digest.
 
@@ -70,9 +72,10 @@ def load_denylist(out):
     return patterns, bad
 
 
-def line_kinds(line, deny):
+def line_kinds(line, deny, emails=True):
+    """The kinds ``line`` matches. ``emails=False`` skips the email rule only (identities)."""
     kinds = [kind for kind, rx in GENERIC_CHECKS if rx.search(line)]
-    if any(m.group(0).lower() != ALLOWED_EMAIL for m in EMAIL.finditer(line)):
+    if emails and any(m.group(0).lower() != ALLOWED_EMAIL for m in EMAIL.finditer(line)):
         kinds.append("email address")
     kinds += [kind for kind, rx in deny if rx.search(line)]
     return kinds
@@ -179,7 +182,9 @@ def identity(value):
 def scan_object_text(where, headers, message, deny, report):
     for key, value in headers:
         if key in ("author", "committer", "tagger"):
-            for kind in line_kinds(identity(value), deny):
+            # Contributors and GitHub's merges commit under their own addresses, so the email
+            # rule is not applied to identities; tokens and the deny-list still are.
+            for kind in line_kinds(identity(value), deny, emails=False):
                 report(f"{where} {key}: {kind}")
     for n, line in enumerate(message.splitlines(), 1):
         for kind in line_kinds(line, deny):
