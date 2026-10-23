@@ -36,7 +36,7 @@ from .models import Evidence, Person
 from .providers.apollo import ApolloProvider
 from .providers.base import ProviderError, find_people_within
 from .providers.fake import FakeProvider
-from .providers.hunter import HunterProvider
+from .providers.hunter import TITLES_WARNING as HUNTER_TITLES_WARNING, HunterProvider
 from .providers.registry import default_registry
 from .run_gates import check_gates
 from .sheets.cells import mask_email
@@ -259,6 +259,8 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
           f"{settings.sheets_max_calls}; search ceiling {SEARCH_RATE_CEILING_PER_MINUTE} per "
           "minute (unverified)", file=out)
     print(f"provider: {settings.provider}", file=out)
+    if settings.provider == "hunter" and signal.titles:
+        print(HUNTER_TITLES_WARNING, file=out)
     print(f"sheet: {settings.sheet_id[:4]}... (masked)", file=out)
     print("nothing is ever sent by email", file=out)
     print(f'Type "{CONFIRM_WORD}" to run: ', end="", file=out)

@@ -518,7 +518,8 @@ class Source(unittest.TestCase):
         flat = " ".join(doc.split())
         self.assertIn("In a live check on 2026-10-22 the credits-remaining value was not found at "
                       "any path the code reads, so the tool shows no remaining credits.", flat)
-        self.assertIn("A domain search can spend one credit per call.", flat)
+        self.assertIn("How many credits one domain search costs, and whether that depends on the "
+                      "limit or on the number of results, is unchecked", flat)
         self.assertNotIn("Until the credits-remaining field is checked", flat)
         # The newly checked values, pinned so a change has to update the docs as well.
         self.assertEqual((hunter.PARAM_LIMIT, hunter.RESP_DATA, hunter.RESP_EMAILS),

@@ -10,11 +10,16 @@ Code: `src/repo_signals/providers/hunter.py`, which uses the strict HTTPS client
 ## Setup
 
 1. Get an API key from **your own** Hunter account.
-2. Export it in your shell or in your CI secrets. Never put it in a file you commit:
+2. Set it in your shell without echoing it or saving it in your shell history (the same
+   pattern as [setup-guide.md](setup-guide.md)). Never put it in a file you commit. The block
+   prints the key's length, never its value:
 
    ```sh
    export REPO_SIGNALS_PROVIDER=hunter
-   export HUNTER_API_KEY=...
+   read -rs "HUNTER_API_KEY?Hunter API key: "
+   echo
+   export HUNTER_API_KEY
+   echo "key length: ${#HUNTER_API_KEY}"
    repo-signals doctor
    ```
 
@@ -22,6 +27,7 @@ Code: `src/repo_signals/providers/hunter.py`, which uses the strict HTTPS client
 
    - `PASS HUNTER_API_KEY is set`, or `FAIL HUNTER_API_KEY is missing` if it is not set
    - `WARN hunter: live use is not enabled until dry run is turned off`
+   - when the signal file sets `titles`: `WARN hunter: titles are filtered among the first 3 people Hunter returns, so a title may return nobody even when matching people exist`
 
 `doctor` stays offline. It names `HUNTER_API_KEY` but never prints its value.
 
@@ -67,10 +73,17 @@ people = provider.find_people("example.com", ("CTO", "VP Engineering"), 5)
   ignoring case. Hunter has no title parameter, so this match runs in the provider, and it is a
   plain substring match: `cto` matches `Co-founder & CTO`, but "CTO" will not match "Chief
   Technology Officer". Use the words the provider returns in its positions.
-- People without a name or a position, and people filtered out by title, are counted, never
-  logged. After each lookup, `provider.last_dropped` holds the counts by code (`missing_name`,
-  `missing_title`, `filtered_by_title`), and `repo-signals run` prints them as one line per
-  domain, for example `people dropped for example.com: filtered_by_title 2`.
+- **Titles are matched only among the first 3 people Hunter returns.** `repo-signals run` asks
+  Hunter for 3 people per domain and the title filter runs on those 3, so a title can return
+  nobody even when matching people exist at that company. The order Hunter returns people in is
+  not documented here, so you cannot rely on matching people being among the first 3. `doctor`
+  and the `run --live` plan print a warning when the provider is `hunter` and the signal file
+  sets `titles`. To keep everyone Hunter returns, leave `titles` out.
+- People without a usable email, a name or a position, and people filtered out by title, are
+  counted, never logged. After each lookup, `provider.last_dropped` holds the counts by code
+  (`missing_email`, `missing_name`, `missing_title`, `filtered_by_title`), and
+  `repo-signals run` prints them as one line per domain, for example
+  `people dropped for example.com: filtered_by_title 2`.
 - At most `limit` people come back. The request asks for at most 100.
 
 ## Errors
@@ -114,7 +127,9 @@ stores it in `provider.credits_remaining`, an integer. Getting this number costs
 `doctor` reports it when it is known.
 
 In a live check on 2026-10-22 the credits-remaining value was not found at any path the code
-reads, so the tool shows no remaining credits. A domain search can spend one credit per call.
+reads, so the tool shows no remaining credits. How many credits one domain search costs, and
+whether that depends on the limit or on the number of results, is unchecked: check your Hunter
+plan before raising `REPO_SIGNALS_PROVIDER_MAX_CALLS`.
 
 ## Your responsibilities
 

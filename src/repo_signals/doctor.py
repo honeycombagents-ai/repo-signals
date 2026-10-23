@@ -21,6 +21,7 @@ from .collector.signal import SignalError, load_signal
 from .drafting.base import DraftError
 from .drafting.suppression import load_suppression
 from .drafting.template import BUILTIN_TEMPLATES, load_template
+from .providers.hunter import TITLES_WARNING
 from .run_gates import check_gates
 from .sheets import google_api
 from .sheets.auth import inspect_credentials
@@ -205,6 +206,19 @@ def check_templates():
     return [(PASS, f"drafting templates present and valid ({', '.join(BUILTIN_TEMPLATES)})")]
 
 
+def check_hunter_titles(environ):
+    """WARN when the provider is hunter and the signal file sets titles. Offline; never FAILs:
+    a malformed provider or signal file is reported by its own check."""
+    try:
+        if config.parse_provider(environ) != "hunter":
+            return []
+        path = config.parse_signal_file(environ)
+        titles = load_signal(path).titles if path is not None else ()
+    except (config.ConfigError, SignalError):
+        return []
+    return [(WARN, TITLES_WARNING)] if titles else []
+
+
 def check_signal_file(environ):
     var = config.SIGNAL_FILE
     try:
@@ -251,6 +265,7 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_suppression(environ),
         *check_templates(),
         *check_signal_file(environ),
+        *check_hunter_titles(environ),
         *check_run_gates(environ, registry),
     ]
 

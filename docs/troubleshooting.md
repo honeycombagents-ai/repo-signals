@@ -207,7 +207,7 @@ email.
 |---|---|---|
 | `missing_name` | The provider returned a person with no name. | Nothing to fix. The person cannot be addressed, so there is no row. |
 | `missing_title` | The provider returned a person with no title or position. | Nothing to fix. Without a title there is nothing to check the person against. |
-| `filtered_by_title` | Hunter returned a person whose position does not contain any of your `titles`. Hunter has no title parameter, so this match runs in the tool: a case-insensitive substring of the position, so `CTO` will not match "Chief Technology Officer". | Use the words that appear in the positions, or add both forms, for example `titles = ["CTO", "Chief Technology Officer"]`. Remove `titles` to keep everyone. |
+| `filtered_by_title` | Hunter returned a person whose position does not contain any of your `titles`. Hunter has no title parameter, so this match runs in the tool: a case-insensitive substring of the position, so `CTO` will not match "Chief Technology Officer". It runs on only the first 3 people Hunter returns, so a title can drop everyone even when matching people exist; `doctor` and the `run --live` plan warn about this. | Use the words that appear in the positions, or add both forms, for example `titles = ["CTO", "Chief Technology Officer"]`. Remove `titles` to keep everyone. |
 | `missing_email` | Hunter returned a person without a usable email address. | Nothing to fix. Hunter rows need an email; try again later or with another domain. |
 
 Apollo does not filter titles in the tool: it filters on its side, approximately, so a search for

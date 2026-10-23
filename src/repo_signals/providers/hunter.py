@@ -61,6 +61,10 @@ CREDITS_REMAINING_PATHS = (("meta", "requests_remaining"), ("meta", "credits_rem
 REQUEST_TIMEOUT_SECONDS = 15.0
 RETRY_AFTER_MAX_SECONDS = 60
 DRY_RUN_NOTICE = "hunter: dry run, returning synthetic people from the fake provider (no network call)"
+# repo-signals run asks for 3 people per domain (run.PEOPLE_LIMIT; a test keeps the two in step)
+# and the title filter runs on those, so titles can return nobody even when matches exist.
+TITLES_WARNING = ("hunter: titles are filtered among the first 3 people Hunter returns, so a "
+                  "title may return nobody even when matching people exist")
 _DOMAIN_RE = re.compile(r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
                         r"[a-z][a-z0-9-]{0,61}[a-z0-9]", re.IGNORECASE)
 _RETRY_AFTER_RE = re.compile(r"[0-9]{1,5}")

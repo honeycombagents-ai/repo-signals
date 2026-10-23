@@ -67,7 +67,7 @@ another domain.
 | `terms` | yes | 1 to 5 strings, each 2 to 60 characters: letters, digits and `. _ + -`, starting with a letter or digit |
 | `language` | no | one word: letters, digits and `+ # . -`, at most 32 characters |
 | `pushed_within_days` | no | a whole number from 1 to 3650; default 365 |
-| `titles` | no | up to 5 job titles passed to the people provider by `repo-signals run`, for example `["CTO", "VP Engineering"]`: letters, digits, single spaces and `& . / + -`, at most 60 characters each, no duplicates (ignoring case) |
+| `titles` | no | up to 5 job titles passed to the people provider by `repo-signals run`, for example `["CTO", "VP Engineering"]`: letters, digits, single spaces and `& . / + -`, at most 60 characters each, no duplicates (ignoring case). With Hunter, titles are filtered among only the first 3 people Hunter returns for each company, so a title may return nobody; Apollo filters titles on its own side. See [hunter.md](hunter.md) and [apollo.md](apollo.md) |
 | `targets` | yes | 1 to 50 `[[targets]]` tables |
 
 Each target:

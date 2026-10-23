@@ -201,8 +201,10 @@ the tool then refuses it with a code and nothing is requested.
 
 The rules for every field are in [signal-file.md](signal-file.md). Pick the title with your
 provider in mind. Hunter matches it as a case-insensitive substring of each position, so `CTO`
-will not match "Chief Technology Officer": use the words that appear in the positions. Apollo
-matches titles on its side and approximately, so expect some adjacent roles.
+will not match "Chief Technology Officer": use the words that appear in the positions. With
+Hunter, titles are also filtered among only the first 3 people Hunter returns for each company,
+so a title may return nobody even when matching people exist; leave `titles` out to keep
+everyone. Apollo filters titles on its own side, approximately, so expect some adjacent roles.
 
 The suppression file lists people and companies that must never get a draft: one email address
 or one domain per line. A good first entry is your own company's domain. The block asks for it:
@@ -246,6 +248,8 @@ run is on, and you should see these lines:
 - `PASS run --live is not armed; failing gates: REPO_SIGNALS_DRY_RUN`
 - `WARN hunter: live use is not enabled until dry run is turned off`, or the same line starting
   with `apollo:` if you chose Apollo
+- with Hunter and a title in the signal file, also
+  `WARN hunter: titles are filtered among the first 3 people Hunter returns, so a title may return nobody even when matching people exist`
 
 If the failing gates name anything besides `REPO_SIGNALS_DRY_RUN`, fix those first.
 
