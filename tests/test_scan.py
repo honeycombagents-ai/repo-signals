@@ -4,6 +4,7 @@ Every secret-shaped value is assembled at test time from fragments, so no
 real or realistic value is ever committed to the tree.
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -53,8 +54,12 @@ class Repo:
         p.write_text(text)
         self.git("add", name)
 
-    def commit(self, msg):
-        self.git("commit", "-q", "-m", msg)
+    def write_bytes(self, name, data):
+        (self.path / name).write_bytes(data)
+        self.git("add", name)
+
+    def commit(self, msg, *extra):
+        self.git("commit", "-q", "-m", msg, *extra)
 
     def remove(self, name):
         self.git("rm", "-q", name)
@@ -220,6 +225,157 @@ class History(ScanTestCase):
         self.repo.write("a.txt", "clean\n")
         code, out = self.repo.scan("--history")
         self.assertEqual(code, 0, out)
+
+
+TOKEN = FIXTURES[1][1].split(" = ", 1)[1]   # a synthetic token-shaped string
+TOKEN_KIND = FIXTURES[1][0]
+
+
+class HistoryByStructure(ScanTestCase):
+    """History is read by structure: no content line, file name or ref can hide a token."""
+
+    def leak_then_remove(self, name, data):
+        if isinstance(data, bytes):
+            self.repo.write_bytes(name, data)
+        else:
+            self.repo.write(name, data)
+        self.repo.commit("add")
+        self.repo.remove(name)
+        self.repo.commit("remove")
+
+    def history(self):
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 1, out)
+        self.assertNotIn(TOKEN, out)
+        return out
+
+    def test_added_line_starting_with_plus_plus_does_not_hide_a_later_token(self):
+        self.repo.write("keep.txt", "fine\n")
+        self.leak_then_remove("f.txt", f"++ looks like a file header\nclean\n{TOKEN}\n")
+        self.assertEqual(self.repo.scan()[0], 0)
+        self.assertRegex(self.history(),
+                         rf"commit [0-9a-f]{{12}} f\.txt:3: {re.escape(TOKEN_KIND)}")
+
+    def test_file_names_git_would_quote_are_scanned(self):
+        self.repo.write("keep.txt", "fine\n")
+        names = ('dq"uote.txt', "ta\tb.txt", "back\\slash.txt")
+        for name in names:
+            self.repo.write(name, f"clean\n{TOKEN}\n")
+        self.repo.commit("odd names")
+        for name in names:
+            self.repo.remove(name)
+        self.repo.commit("remove")
+        out = self.history()
+        for name in names:
+            with self.subTest(name=name):
+                self.assertIn(f"{name}:2: {TOKEN_KIND}", out)
+
+    def test_token_only_on_a_branch_other_than_head(self):
+        self.repo.write("keep.txt", "fine\n")
+        self.repo.commit("base")
+        self.repo.git("switch", "-q", "-c", "side")
+        self.repo.write("side.txt", f"{TOKEN}\n")
+        self.repo.commit("side work")
+        self.repo.git("switch", "-q", "main")
+        self.assertEqual(self.repo.scan()[0], 0)
+        self.assertIn(f"side.txt:1: {TOKEN_KIND}", self.history())
+
+    def test_token_only_on_a_tag(self):
+        self.repo.write("keep.txt", "fine\n")
+        self.repo.commit("base")
+        self.repo.git("switch", "-q", "-c", "gone")
+        self.repo.write("tagged.txt", f"{TOKEN}\n")
+        self.repo.commit("tagged work")
+        self.repo.git("tag", "-a", "v0", "-m", "release")
+        self.repo.git("switch", "-q", "main")
+        self.repo.git("branch", "-q", "-D", "gone")
+        self.assertIn(f"tagged.txt:1: {TOKEN_KIND}", self.history())
+
+    def test_token_only_in_a_commit_message(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit(f"subject line\n\nbody with {TOKEN}")
+        self.assertRegex(self.history(),
+                         rf"commit [0-9a-f]{{12}} message:3: {re.escape(TOKEN_KIND)}")
+
+    def test_token_only_in_an_author_name(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit("fine", f"--author={TOKEN} <noreply@honeycombagents.ai>")
+        self.assertRegex(self.history(), rf"commit [0-9a-f]{{12}} author: {re.escape(TOKEN_KIND)}")
+
+    def test_token_only_in_a_tag_message_or_tagger(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.commit("fine")
+        self.repo.git("-c", f"user.name={TOKEN}", "tag", "-a", "v1", "-m", f"notes {TOKEN}")
+        out = self.history()
+        self.assertRegex(out, rf"tag [0-9a-f]{{12}} message:1: {re.escape(TOKEN_KIND)}")
+        self.assertRegex(out, rf"tag [0-9a-f]{{12}} tagger: {re.escape(TOKEN_KIND)}")
+
+    def test_a_disallowed_committer_email_is_caught(self):
+        self.repo.write("a.txt", "clean\n")
+        self.repo.git("-c", "user.email=" + j("someone", "@", "example", ".com"), "commit", "-q",
+                      "-m", "fine")
+        self.assertRegex(self.history(), r"commit [0-9a-f]{12} committer: email address")
+
+    def test_utf16_file_with_a_token_is_caught(self):
+        data = f"clean\n{TOKEN}\n".encode("utf-16")
+        self.assertIn(b"\0", data)
+        self.repo.write_bytes("wide.txt", data)
+        code, out = self.repo.scan()
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"wide.txt:2: {TOKEN_KIND} (UTF-16)", out)
+        self.assertNotIn(TOKEN, out)
+        self.repo.commit("wide")
+        self.repo.remove("wide.txt")
+        self.repo.commit("remove")
+        self.assertIn(f"wide.txt:2: {TOKEN_KIND} (UTF-16)", self.history())
+
+    def test_nul_bytes_do_not_hide_a_utf8_token(self):
+        self.repo.write_bytes("bin.dat", b"\0\0\0header\n" + TOKEN.encode() + b"\n")
+        code, out = self.repo.scan()
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"bin.dat:2: {TOKEN_KIND}", out)
+
+    def test_undecodable_utf16_is_reported_not_skipped(self):
+        self.repo.write_bytes("bad16.txt", b"\xff\xfe" + b"\x00\xd8")  # a lone surrogate
+        code, out = self.repo.scan()
+        self.assertEqual(code, 1, out)
+        self.assertIn("bad16.txt:0: undecodable UTF-16 text", out)
+
+    def test_a_file_name_holding_a_token_is_never_printed(self):
+        name = f"f-{TOKEN}.txt"
+        self.repo.write(name, f"{TOKEN}\n")
+        code, out = self.repo.scan()
+        self.assertEqual(code, 1, out)
+        self.assertNotIn(TOKEN, out)
+        self.assertRegex(out, rf"\(path [0-9a-f]{{12}}\): file name: {re.escape(TOKEN_KIND)}")
+        self.repo.commit("named")
+        self.history()
+
+    def test_everything_at_once_never_prints_the_token(self):
+        self.repo.write("a.txt", f"++ x\n{TOKEN}\n")
+        self.repo.write('q"uote.txt', f"{TOKEN}\n")
+        self.repo.write_bytes("w.txt", TOKEN.encode("utf-16"))
+        self.repo.commit(f"message {TOKEN}", f"--author={TOKEN} <noreply@honeycombagents.ai>")
+        self.repo.git("tag", "-a", "t1", "-m", TOKEN)
+        code, out = self.repo.scan("--history")
+        self.assertEqual(code, 1, out)
+        self.assertNotIn(TOKEN, out)
+        self.assertNotIn(TOKEN[4:20], out)
+
+    def test_merge_reports_only_lines_new_to_every_parent(self):
+        self.repo.write("base.txt", "base\n")
+        self.repo.commit("base")
+        self.repo.git("switch", "-q", "-c", "topic")
+        self.repo.write("topic.txt", f"{TOKEN}\n")
+        self.repo.commit("topic")
+        self.repo.git("switch", "-q", "main")
+        self.repo.write("main.txt", "main\n")
+        self.repo.commit("main")
+        self.repo.git("merge", "-q", "--no-ff", "-m", "merge", "topic")
+        out = self.history()
+        commits = [l for l in out.splitlines() if l.startswith("commit ")]
+        self.assertEqual(len(commits), 1, out)
+        self.assertIn(f"topic.txt:1: {TOKEN_KIND}", commits[0])
 
 
 if __name__ == "__main__":

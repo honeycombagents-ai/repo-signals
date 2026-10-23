@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The history scan reads git by structure** (`scripts/scan.py --history`): it walks every ref
+  (branches, tags, remotes), takes changed files from NUL-delimited `git diff-tree` output, and
+  also scans commit messages, author and committer names and emails, annotated tags and ref
+  names. Files with NUL bytes are scanned too, and UTF-16 files with a byte-order mark are
+  decoded. A commit whose author or committer email is not the allowed address now fails the
+  scan, like any other email address.
 - **Sheet appends are split under the request limit.** New rows go out in order, in appends of
   at most 60 KB each, so a run with many people no longer fails with `payload_too_large` and
   loses every row. Each append is charged to the sheets budget. If one fails, the earlier
