@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.1 (2026-10-23)
+
+Fixes from a review of 0.1.0. Nothing is ever sent by email, and dry run is still the default.
 
 - **Sheet preflight before any paid call.** Right after the typed "yes", `run --live` reads the
   sheet's header row once, through the same client the sheet stage uses, before any GitHub
@@ -37,6 +39,24 @@
   [docs/google-sheets.md](docs/google-sheets.md)).
 - **docs/deployment.md** now clones the repository and uses a virtual environment before
   `pip install -e .`.
+- **Local sheet checks before the typed "yes".** `run --live` now refuses, before asking for
+  "yes", when the key file is unreadable or malformed (checked with the same function the run
+  uses to load it), when openssl is not on `PATH` and the built-in signer would be used, or when
+  `REPO_SIGNALS_SHEETS_MAX_CALLS` is below the minimum. `doctor` uses the same key-file check, so
+  it now fails on a malformed `client_email` or `private_key` too.
+- **Hunter titles warning.** With Hunter, titles are filtered among only the first 3 people Hunter
+  returns, so a title can return nobody. `doctor` and the `run --live` plan now warn about this,
+  and the docs say so.
+- **Small fixes:** the `doctor` dry-run line names `run --live`; the unused live branch of
+  `collect --dry-run`'s code is removed; a `CONTRIBUTING.md` guide is added; `.gitignore` now
+  covers service-account key files, `dist/`, `build/` and `.DS_Store`.
+
+### Not checked live
+
+Only the Hunter limit check above was made against a real service. Sheet batching, the sheet
+preflight and the local sheet checks have run only against a fake Google in the test suite (which
+CI runs), not against a real sheet. The scanner changes have run only on this repository and on
+throwaway test repositories.
 
 ## 0.1.0 (2026-10-22)
 

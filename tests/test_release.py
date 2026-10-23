@@ -1,4 +1,7 @@
-"""Release 0.1.0: one version everywhere, the changelog, and the GitHub User-Agent."""
+"""Releases: one current version everywhere, the changelog entries, and the GitHub User-Agent.
+
+VERSION is the 0.1.0 entry, whose changelog checks stay as they were; CURRENT is the version the
+package reports now."""
 import contextlib
 import io
 import tomllib
@@ -16,6 +19,7 @@ from repo_signals.http import HttpClient
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION = "0.1.0"
+CURRENT = "0.1.1"
 
 
 class Version(unittest.TestCase):
@@ -23,14 +27,14 @@ class Version(unittest.TestCase):
         with open(ROOT / "pyproject.toml", "rb") as fh:
             project = tomllib.load(fh)["project"]
         self.assertEqual(project["version"], __version__)
-        self.assertEqual(__version__, VERSION)
+        self.assertEqual(__version__, CURRENT)
 
     def test_cli_reports_the_version(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as cm:
             main(["--version"])
         self.assertEqual(cm.exception.code, 0)
-        self.assertEqual(out.getvalue().strip(), f"repo-signals {VERSION}")
+        self.assertEqual(out.getvalue().strip(), f"repo-signals {CURRENT}")
 
     def test_github_user_agent_carries_the_version(self):
         fake = gh_fx.FakeGitHub(run_fx.ORGS, run_fx.REPOS)
@@ -38,7 +42,7 @@ class Version(unittest.TestCase):
                               dry_run=False)
         client.get_org("example-org")
         self.assertEqual(fake.calls[0]["headers"]["User-Agent"],
-                         f"repo-signals/{VERSION} (+https://honeycombagents.ai)")
+                         f"repo-signals/{CURRENT} (+https://honeycombagents.ai)")
 
 
 class Changelog(unittest.TestCase):
