@@ -13,7 +13,12 @@ For a first setup, see [setup-guide.md](setup-guide.md).
 
 ## Start here
 
-These are the codes most often seen in a first run, and what each one usually means then:
+These are the codes most often seen in a first run, and what each one usually means then.
+`header_mismatch`, `token_rejected`, `signing_failed`, `sheet_not_found`, `auth_failed`, and the
+key-file and network codes can now appear right after the typed "yes", from the sheet preflight,
+before any GitHub request or people lookup: the run then ends with
+`run: refused (sheet preflight: CODE)`. `header_missing` still appears only at the sheet stage,
+because the preflight reads only the first row.
 
 - [`header_missing`](#header_missing): the sheet is not empty. It has data but no header row. Use
   a new, empty sheet.

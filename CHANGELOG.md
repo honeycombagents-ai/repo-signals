@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Sheet preflight before any paid call.** Right after the typed "yes", `run --live` reads the
+  sheet's header row once, through the same client the sheet stage uses, before any GitHub
+  request or people lookup. A refused token, an unshared or wrong sheet, a first tab not named
+  `Sheet1` or someone else's header now ends the run there (exit 4) instead of after the paid
+  lookups. It costs one extra sheets call, so the minimum `REPO_SIGNALS_SHEETS_MAX_CALLS` is now
+  6 and the recommended tiny budget for a first run is 6.
 - **Hunter limit checked live (2026-10-23, one account, domain search):** a limit of 3 returned 3
   people, a limit of 10 returned 10, and a limit of 100 was refused with HTTP 400. Whether the
   refusal is a plan cap or Hunter's global maximum is unknown, and the credit cost of a larger
@@ -24,7 +30,8 @@
 - **New code `row_too_large`** for a single row too large for any append. The rows before it
   stay written.
 - **A refused request body is no longer charged** to the sheets budget.
-- **The plan line** says 5 sheet calls for one append, plus 1 per extra append as needed.
+- **The plan line** says 6 sheet calls for the header check and one append, plus 1 per extra
+  append as needed.
 - **Documented the read limit:** reading the existing rows is one request capped at 1 MB, so a
   sheet of roughly 750 to 800 typical rows needs trimming by hand (see
   [docs/google-sheets.md](docs/google-sheets.md)).

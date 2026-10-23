@@ -67,7 +67,7 @@ Before the first live run:
 - [ ] a **throwaway sheet** with nothing else in it, shared with the service account
 - [ ] a signal file with one target and one term
 - [ ] tiny budgets: `REPO_SIGNALS_MAX_CALLS=3`, `REPO_SIGNALS_PROVIDER_MAX_CALLS=1`,
-      `REPO_SIGNALS_SHEETS_MAX_CALLS=5`
+      `REPO_SIGNALS_SHEETS_MAX_CALLS=6`
 - [ ] `repo-signals probe-org <org>` gives the outcome you expect
 - [ ] `REPO_SIGNALS_DRY_RUN=false` only for the run itself, then unset it
 

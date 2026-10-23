@@ -19,9 +19,10 @@ from .sheets.auth import inspect_credentials
 
 GITHUB_PLAN_GATE = f"github plan within {config.MAX_CALLS}"
 SEARCH_CEILING_GATE = "github plan within the search-rate ceiling"
-# Token, header row, existing rows, header write and one append: the fewest sheet calls a write
-# can need (run.SHEETS_CALLS_PER_WRITE; a test keeps the two equal).
-MIN_SHEETS_CALLS = 5
+# The preflight header read (with the token), then the header row, existing rows, header write
+# and one append: the fewest sheet calls a live run can need (run.SHEETS_CALLS_PER_WRITE; a test
+# keeps the two equal).
+MIN_SHEETS_CALLS = 6
 SHEETS_BUDGET_GATE = f"{config.SHEETS_MAX_CALLS} of at least {MIN_SHEETS_CALLS}"
 OPENSSL_GATE = "openssl_not_found"
 

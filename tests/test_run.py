@@ -223,8 +223,9 @@ class Prompt(Case):
         self.assertEqual(lines[:8], [
             "run: live plan", "signal: synthetic", "targets: 2 (2 planned, 0 skipped as suppressed)",
             "terms: 1",
-            "max calls: github 4 of 10; provider at most 2 of 5; sheets 5 for one append, plus 1 "
-            "per extra append as needed, at most 10; search ceiling 30 per minute (unverified)",
+            "max calls: github 4 of 10; provider at most 2 of 5; sheets 6 for the header check and "
+            "one append, plus 1 per extra append as needed, at most 10; search ceiling 30 per "
+            "minute (unverified)",
             "provider: fake", "sheet: SENT... (masked)", "nothing is ever sent by email"])
 
     def test_no_yes_flag(self):
@@ -259,7 +260,7 @@ class Prompt(Case):
                 mock.patch.object(run_mod, "SheetWriter", side_effect=writer):
             self.assertEqual(self.live(self.env(), stdin=stdin,
                                        provider_factory=provider_factory), 0, self.text)
-        self.assertEqual(events, ["prompt answered", "github client", "provider", "sheet writer"])
+        self.assertEqual(events, ["prompt answered", "sheet writer", "github client", "provider"])
 
 
 # ---- the live pipeline ----
@@ -272,7 +273,7 @@ class Pipeline(Case):
         self.assertIn("people: 2 domain(s) looked up, 6 people found", out)
         self.assertIn("drafts: 6 drafted", out)
         self.assertIn("sheets: appended 6 row(s), skipped 0 duplicate(s)", out)
-        self.assertIn("requests made: github 4 of 10, provider 2 of 5, sheets 4 of 10", out)
+        self.assertIn("requests made: github 4 of 10, provider 2 of 5, sheets 5 of 10", out)
         self.assertTrue(out.rstrip().endswith("run: complete; nothing sent by email"))
         self.assertEqual(self.github.calls[0]["headers"]["Authorization"], "Bearer " + TOKEN)
 
@@ -359,13 +360,13 @@ class Budgets(Case):
         out = self.out.getvalue()
         self.assertIn("people skipped: budget_exhausted 1", out)
         self.assertIn("run: partial (people: budget_exhausted)", out)
-        self.assertIn("requests made: github 4 of 10, provider 1 of 1, sheets 4 of 10", out)
+        self.assertIn("requests made: github 4 of 10, provider 1 of 1, sheets 5 of 10", out)
         self.assertEqual(len(self.rows()), 3)
 
     def test_sheets_cap_below_the_minimum_is_refused_before_start(self):
         code = self.live(self.env(**{config.SHEETS_MAX_CALLS: "2"}))
         self.assertEqual(code, 2, self.text)
-        self.assertIn("failing gates: REPO_SIGNALS_SHEETS_MAX_CALLS of at least 5", self.text)
+        self.assertIn("failing gates: REPO_SIGNALS_SHEETS_MAX_CALLS of at least 6", self.text)
         self.assertEqual(self.calls(), (0, 0))
         self.assertEqual(self.rows(), [])
 
@@ -401,7 +402,7 @@ class Budgets(Case):
     def test_sheet_refusal_exits_4(self):
         google = sheets_fx.FakeGoogle(header=["their", "columns"])
         self.assertEqual(self.live(self.env(), google=google), 4, self.text)
-        self.assertIn("run: refused (sheet: header_mismatch)", self.out.getvalue())
+        self.assertIn("run: refused (sheet preflight: header_mismatch)", self.out.getvalue())
 
     def test_provider_errors_continue(self):
         class Flaky(FakeProvider):

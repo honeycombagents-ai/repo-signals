@@ -117,17 +117,17 @@ class Checks(run_fx.Case):
         self.assertIn("WARN openssl not found on PATH", out)
         self.assertIn(f"PASS run --live is not armed; failing gates: {OPENSSL_GATE}", out)
 
-    def test_sheets_budget_of_4_blocks_and_5_passes(self):
+    def test_sheets_budget_of_5_blocks_and_6_passes(self):
         key = self.key_file(GOOD)
-        self.assertEqual(self.gates(self.env(**{VAR: key, config.SHEETS_MAX_CALLS: "4"}),
-                                    which=found), [SHEETS_BUDGET_GATE])
         self.assertEqual(self.gates(self.env(**{VAR: key, config.SHEETS_MAX_CALLS: "5"}),
+                                    which=found), [SHEETS_BUDGET_GATE])
+        self.assertEqual(self.gates(self.env(**{VAR: key, config.SHEETS_MAX_CALLS: "6"}),
                                     which=found), [])
-        self.assertEqual(SHEETS_BUDGET_GATE, "REPO_SIGNALS_SHEETS_MAX_CALLS of at least 5")
+        self.assertEqual(SHEETS_BUDGET_GATE, "REPO_SIGNALS_SHEETS_MAX_CALLS of at least 6")
 
     def test_the_minimum_matches_the_plan_constant(self):
         self.assertEqual(MIN_SHEETS_CALLS, run_mod.SHEETS_CALLS_PER_WRITE)
-        self.assertEqual(MIN_SHEETS_CALLS, 5)
+        self.assertEqual(MIN_SHEETS_CALLS, 6)
 
 
 class RunGate(run_fx.Case):

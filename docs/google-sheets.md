@@ -125,16 +125,18 @@ request. A call that would pass the cap never reaches the network and raises
 `budget_exhausted`. A request body is measured before anything is charged: a body over the
 64 KB request limit is refused with `payload_too_large`, with no call charged and nothing sent.
 
-A live write costs:
+A `repo-signals run --live` costs these sheet calls:
 
-1. a token,
-2. reading the header row,
+1. a token and one read of the header row, as a preflight right after the typed "yes" and
+   before any GitHub or provider call (see [run.md](run.md#the-pipeline)),
+2. reading the header row again at the sheet stage (the token is reused),
 3. reading the existing rows (to find duplicates),
 4. writing the header row, on an empty sheet only, and
 5. one append for each 60 KB of new rows.
 
-So a write of up to about 45 typical rows (about 1.3 KB each) costs 4 or 5 calls, and each
-further 60 KB of rows adds one append. `REPO_SIGNALS_SHEETS_MAX_CALLS` (default 10) stays the
+So a run that writes up to about 45 typical rows (about 1.3 KB each) costs 5 or 6 sheet calls,
+and each further 60 KB of rows adds one append. The preflight is one extra call compared with
+the writer alone; `SheetWriter.write` used on its own from a program costs 4 or 5. `REPO_SIGNALS_SHEETS_MAX_CALLS` (default 10) stays the
 hard limit: if it runs out part-way, the appends already sent stay written.
 
 ## Appends of at most 60 KB

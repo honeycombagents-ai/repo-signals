@@ -1,4 +1,4 @@
-"""``repo-signals run``: collect -> people -> draft -> sheet.
+"""``repo-signals run``: sheet preflight -> collect -> people -> draft -> sheet.
 
 Dry run (the default) makes no network call and writes nothing. It runs the whole pipeline on
 ONE synthetic Evidence item on example.invalid with the fake provider, and prints the stage
@@ -6,8 +6,11 @@ counts, the column layout and one sample row and draft with the email masked.
 
 ``run --live`` refuses (exit 2, no request) unless every gate in ``run_gates`` passes and stdin
 and stdout are a terminal. It prints the plan and requires a typed "yes"; there is no flag to
-skip that. Real clients are built only after "yes". Each service has its own CallBudget. A stage
-that fails or hits its cap stops; later stages work on what exists, and the run is partial.
+skip that. Real clients are built only after "yes". Each service has its own CallBudget. Right
+after "yes", before any GitHub or provider call, one sheet preflight reads the header row
+through the writer's own client; a refused token, an unreadable sheet or another header ends the
+run there (exit 4). A later stage that fails or hits its cap stops; later stages work on what
+exists, and the run is partial.
 Rows are only ever appended, in one append per 60 KB of new rows: a person already in the sheet
 is skipped and never updated.
 Nothing is ever sent by email.
@@ -44,9 +47,10 @@ from .sheets.layout import COLUMNS
 from .sheets.writer import AppendStopped, SheetWriter
 
 PEOPLE_LIMIT = 3
-# Token, header row, existing rows, header write and the first append. Each further append (one
-# per 60 KB of new rows) adds one call; the sheets budget stays the hard limit.
-SHEETS_CALLS_PER_WRITE = 5
+# Token and header row (the preflight before collect), then the header row again, the existing
+# rows, the header write and the first append. Each further append (one per 60 KB of new rows)
+# adds one call; the sheets budget stays the hard limit. run_gates.MIN_SHEETS_CALLS matches it.
+SHEETS_CALLS_PER_WRITE = 6
 EXIT_COMPLETE, EXIT_DECLINED, EXIT_REFUSED_BEFORE_START = 0, 1, 2
 EXIT_PARTIAL, EXIT_REFUSED_BY_STAGE = 3, 4
 STOP_CODES = ("budget_exhausted", "rate_limited")
@@ -188,6 +192,20 @@ def _display(value, width=60):
     return text if len(text) <= width else text[:width - 3] + "..."
 
 
+def sheet_preflight(writer):
+    """One header read through the writer's own client, before any GitHub or provider call.
+
+    The token it fetches is cached by that client, so the write reuses it: the preflight costs
+    one sheets call in total. It reads only the first row and writes nothing. An empty first row
+    (an empty sheet) or the tool's own header passes; another header raises header_mismatch, and
+    a token or read failure raises its own code. The writer still checks the header itself.
+    """
+    header = writer._live_client().read_header()
+    if header and header[:len(COLUMNS)] != list(COLUMNS):
+        raise ProviderError("header_mismatch")
+    return "the tool's header" if header else "empty first row"
+
+
 def _dry_run(environ, out, err, run_id):
     try:
         settings = config.load_settings(environ)
@@ -255,9 +273,9 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
     print(f"terms: {len(signal.terms)}", file=out)
     print(f"max calls: github {plan.total} of {settings.max_calls}; provider at most "
           f"{plan.targets_planned} of {settings.provider_max_calls}; sheets "
-          f"{SHEETS_CALLS_PER_WRITE} for one append, plus 1 per extra append as needed, at most "
-          f"{settings.sheets_max_calls}; search ceiling {SEARCH_RATE_CEILING_PER_MINUTE} per "
-          "minute (unverified)", file=out)
+          f"{SHEETS_CALLS_PER_WRITE} for the header check and one append, plus 1 per extra "
+          f"append as needed, at most {settings.sheets_max_calls}; search ceiling "
+          f"{SEARCH_RATE_CEILING_PER_MINUTE} per minute (unverified)", file=out)
     print(f"provider: {settings.provider}", file=out)
     if settings.provider == "hunter" and signal.titles:
         print(HUNTER_TITLES_WARNING, file=out)
@@ -277,6 +295,22 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
     provider_budget = CallBudget(settings.provider_max_calls)
     sheets_budget = CallBudget(settings.sheets_max_calls)
     partial, refused = [], None
+
+    writer = SheetWriter(Settings(dry_run=False, sheet_id=settings.sheet_id,
+                                  google_credentials=settings.google_credentials),
+                         budget=sheets_budget, http=sheets_http, signer=signer, out=out,
+                         clock=clock, run_id=run_id)
+    try:
+        found = sheet_preflight(writer)
+    except ProviderError as e:
+        print(f"sheet preflight: refused ({e.code}); nothing collected, no people looked up",
+              file=out)
+        print(f"requests made: github 0 of {settings.max_calls}, provider 0 of "
+              f"{settings.provider_max_calls}, sheets {sheets_budget.used} of "
+              f"{settings.sheets_max_calls}", file=out)
+        print(f"run: refused (sheet preflight: {e.code})", file=out)
+        return EXIT_REFUSED_BY_STAGE
+    print(f"sheet preflight: ok ({found})", file=out)
 
     client = GitHubClient(github_http, github_budget, settings.github_token, dry_run=False)
     result = collect(signal, client, gates.suppression, settings.max_calls,
@@ -312,12 +346,8 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
     if refused is None and not records:
         print("sheet: nothing to write", file=out)
     elif refused is None:
-        writer = SheetWriter(Settings(dry_run=False, sheet_id=settings.sheet_id,
-                                      google_credentials=settings.google_credentials),
-                             budget=sheets_budget, http=sheets_http, signer=signer, out=out,
-                             clock=clock, run_id=run_id)
         try:
-            writer.write(records)
+            writer.write(records)   # the preflight's writer: same client, token reused
         except ProviderError as e:
             if e.code in SHEET_REFUSAL_CODES:
                 refused = f"sheet: {e.code}"

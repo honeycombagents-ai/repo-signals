@@ -169,7 +169,7 @@ Tiny budgets for the first run:
 ```sh
 export REPO_SIGNALS_MAX_CALLS=3
 export REPO_SIGNALS_PROVIDER_MAX_CALLS=1
-export REPO_SIGNALS_SHEETS_MAX_CALLS=5
+export REPO_SIGNALS_SHEETS_MAX_CALLS=6
 ```
 
 ## 7. A signal file and a suppression file

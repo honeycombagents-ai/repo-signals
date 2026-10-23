@@ -11,6 +11,14 @@ repo-signals run --live     # real requests, after the gates and a typed "yes"
 
 ## The pipeline
 
+0. **Sheet preflight** (Google), right after the typed "yes" and before any GitHub or provider
+   call: a token and one read of the sheet's first row, through the same client the sheet stage
+   uses later, so the token is reused. An empty first row or the tool's own header passes.
+   Another header (`header_mismatch`), a refused token, an unshared or wrong sheet, a first tab
+   not named `Sheet1`, or any other read failure ends the run there with
+   `run: refused (sheet preflight: CODE)`, exit code 4, no GitHub request and no people lookup,
+   and the `requests made` line shows the sheets calls used. It reads no other rows and writes
+   nothing; the sheet stage still checks the header itself.
 1. **Collect** (GitHub): the signal file's plan, organisation matching, repository searches,
    filters and Evidence (see [orchestration.md](orchestration.md)). Evidence is printed as
    `summary` and `url` lines, exactly as `collect --live` prints it.
@@ -32,7 +40,7 @@ Each service has its own call budget. One stage hitting its cap never spends ano
 |---|---|---|
 | `REPO_SIGNALS_MAX_CALLS` | GitHub requests | 25 |
 | `REPO_SIGNALS_PROVIDER_MAX_CALLS` | people-provider requests | 25 |
-| `REPO_SIGNALS_SHEETS_MAX_CALLS` | Google requests, including the token and each append | 10 |
+| `REPO_SIGNALS_SHEETS_MAX_CALLS` | Google requests, including the token, the preflight header read and each append | 10 |
 
 Each must be a whole number from 1 to 500. When a stage fails or hits its cap, that stage stops,
 later stages run on what exists, and the run ends `partial` with the stage and code, for example
@@ -73,9 +81,9 @@ names only the variables or conditions that fail.
    content. Nothing is signed and openssl is not run.
 7. `openssl` is on `PATH` (named `openssl_not_found`), because the built-in signer needs it. A
    program that passes its own Signer to `run.run` skips this gate.
-8. `REPO_SIGNALS_SHEETS_MAX_CALLS` is at least 5 (named
-   `REPO_SIGNALS_SHEETS_MAX_CALLS of at least 5`): a token, the header row, the existing rows,
-   the header write and one append.
+8. `REPO_SIGNALS_SHEETS_MAX_CALLS` is at least 6 (named
+   `REPO_SIGNALS_SHEETS_MAX_CALLS of at least 6`): a token and the preflight header read, then
+   the header row again, the existing rows, the header write and one append.
 9. The suppression list, if set, parses.
 10. The GitHub plan fits `REPO_SIGNALS_MAX_CALLS` and the search-rate ceiling.
 11. stdin and stdout are a terminal.
@@ -88,8 +96,8 @@ gates by name.
 
 Then the run prints the plan: targets, terms, the most calls each service could use against its
 budget, the provider name, the first 4 characters of the sheet id, and
-`nothing is ever sent by email`. For the sheet, the plan says 5 calls for one append, plus 1
-per extra append as needed. The number of appends depends on how many people are found and how
+`nothing is ever sent by email`. For the sheet, the plan says 6 calls for the header check and
+one append, plus 1 per extra append as needed. The number of appends depends on how many people are found and how
 long their rows are, which is not known until after the people stage, so the plan cannot give
 an exact worst case; `REPO_SIGNALS_SHEETS_MAX_CALLS` is the hard limit. You must type exactly `yes`. **There is no flag to skip the
 prompt.** The real GitHub client, the people provider and the sheet writer are built only after
@@ -102,7 +110,7 @@ prompt.** The real GitHub client, the people provider and the sheet writer are b
 - [ ] a **throwaway sheet**, shared with the service account, with nothing else in it
 - [ ] one target with a named `org`, and one term
 - [ ] tiny budgets, for example `REPO_SIGNALS_MAX_CALLS=3`, `REPO_SIGNALS_PROVIDER_MAX_CALLS=1`,
-      `REPO_SIGNALS_SHEETS_MAX_CALLS=5`
+      `REPO_SIGNALS_SHEETS_MAX_CALLS=6`
 - [ ] `repo-signals doctor` shows `run --live is ARMED`
 - [ ] read every row and draft in the sheet before doing anything with it
 
