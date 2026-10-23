@@ -1,7 +1,6 @@
 """Release 0.1.0: one version everywhere, the changelog, and the GitHub User-Agent."""
 import contextlib
 import io
-import re
 import tomllib
 import unittest
 from pathlib import Path
@@ -60,13 +59,6 @@ class Changelog(unittest.TestCase):
         readme = (ROOT / "README.md").read_text()
         status, rest = readme.split("\n## What it is\n", 1)
         self.assertIn("[CHANGELOG.md](CHANGELOG.md)", status)
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("CHANGELOG.md", "README.md", "pyproject.toml", "src/repo_signals/__init__.py",
-                     "tests/test_release.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

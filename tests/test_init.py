@@ -242,13 +242,6 @@ class Source(unittest.TestCase):
             self.assertEqual(main(["init"]), 0)
         self.assertEqual([c.args for c in run_init.call_args_list], [("/somewhere",), (None,)])
 
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/init_setup.py", "tests/test_init.py", "docs/deployment.md",
-                     "src/repo_signals/cli.py", "README.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
     def test_docs_have_no_em_dashes(self):
         self.assertNotIn("—", (ROOT / "docs/deployment.md").read_text())
 

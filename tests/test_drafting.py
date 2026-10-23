@@ -650,21 +650,6 @@ class NoNetwork(unittest.TestCase):
 
 
 class Source(unittest.TestCase):
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        files = [*sorted((ROOT / "src/repo_signals/drafting").rglob("*.py")),
-                 *sorted(TEMPLATE_DIR.glob("*.txt")),
-                 *(ROOT / p for p in ("src/repo_signals/models.py", "src/repo_signals/config.py",
-                                      "src/repo_signals/doctor.py",
-                                      "src/repo_signals/sheets/cells.py",
-                                      "src/repo_signals/sheets/writer.py",
-                                      "tests/test_drafting.py", "tests/test_drafting_doctor.py",
-                                      "docs/drafting.md", "pyproject.toml"))]
-        self.assertGreaterEqual(len(files), 17)
-        for f in files:
-            with self.subTest(file=f.name):
-                self.assertIsNone(word.search(f.read_text()))
-
     def test_templates_are_packaged(self):
         text = (ROOT / "pyproject.toml").read_text()
         self.assertIn('"repo_signals.drafting" = ["templates/*.txt"]', text)

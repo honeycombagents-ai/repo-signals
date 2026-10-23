@@ -474,9 +474,9 @@ Each PR is offline-tested with a fake transport and keeps dry run as the default
    and handing Evidence to the drafter's `evidence_lookup`.
 6. **Live switch.** `probe-org` (one request) and the gated `collect --live`
    (see [live-collection.md](live-collection.md)). Before the first real run, check the
-   unverified details against GitHub's documentation, with John's sign-off.
+   unverified details against GitHub's documentation, with the maintainer's sign-off.
 
-### Decided (John)
+### Decided (maintainer)
 
 1. **Org matching:** user-supplied org (A) plus verified-domain matching (B). Name search is used
    only for suggestions and never produces Evidence.

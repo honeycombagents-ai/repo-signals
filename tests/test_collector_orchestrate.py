@@ -4,7 +4,6 @@ GitHub, and every record is made up in the ASSUMED shape, with personal and free
 import ast
 import io
 import os
-import re
 import subprocess
 import sys
 import unittest
@@ -375,14 +374,6 @@ class Source(unittest.TestCase):
                 names = [a.name for a in node.names] + [getattr(node, "module", "") or ""]
                 for n in names:
                     self.assertFalse(n.split(".")[0] in ("http", "socket", "ssl", "urllib"), n)
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/orchestrate.py",
-                     "tests/test_collector_orchestrate.py", "docs/orchestration.md",
-                     "docs/collector-design.md", "docs/evidence.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

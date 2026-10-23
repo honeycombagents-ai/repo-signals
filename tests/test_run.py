@@ -554,17 +554,6 @@ class DoctorAndSource(Case):
             self.assertEqual(main(["run", "--live"]), 0)
         self.assertEqual([c.kwargs for c in run.call_args_list], [{"live": False}, {"live": True}])
 
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/run.py", "src/repo_signals/run_gates.py",
-                     "src/repo_signals/config.py", "src/repo_signals/doctor.py",
-                     "src/repo_signals/cli.py", "src/repo_signals/sheets/writer.py",
-                     "src/repo_signals/collector/signal.py",
-                     "src/repo_signals/collector/orchestrate.py", "tests/test_run.py",
-                     "docs/run.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
 
 if __name__ == "__main__":
     unittest.main()

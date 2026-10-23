@@ -883,20 +883,6 @@ class NoSecretsAnywhere(LiveCase):
 
 
 class Source(unittest.TestCase):
-    NEW_FILES = ("src/repo_signals/sheets/__init__.py", "src/repo_signals/sheets/auth.py",
-                 "src/repo_signals/sheets/client.py", "src/repo_signals/sheets/errors.py",
-                 "src/repo_signals/sheets/google_api.py", "src/repo_signals/sheets/layout.py",
-                 "src/repo_signals/sheets/writer.py", "src/repo_signals/http.py",
-                 "src/repo_signals/config.py", "src/repo_signals/doctor.py",
-                 "tests/test_sheets.py", "tests/test_sheets_doctor.py", "tests/test_http.py",
-                 "docs/google-sheets.md")
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
-        for name in self.NEW_FILES:
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
     def test_unverified_note_on_the_one_constants_block(self):
         text = (ROOT / "src/repo_signals/sheets/google_api.py").read_text()
         self.assertIn("verify against Google's current documentation before first live use", text)

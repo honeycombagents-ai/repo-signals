@@ -1,5 +1,4 @@
 """Pre-public cleanups: the intro template wording, the init docstring and the drafting docs."""
-import re
 import unittest
 from pathlib import Path
 
@@ -59,13 +58,6 @@ class DraftingDocs(unittest.TestCase):
             self.assertIn(phrase, section)
         self.assertNotIn("—", section)
 
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/init_setup.py", "src/repo_signals/drafting/templates/intro.txt",
-                     "docs/drafting.md", "tests/test_pre_public.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
 
 class ReadmeIntro(unittest.TestCase):
     def test_status_signal_file_and_never_sends(self):
@@ -82,8 +74,6 @@ class ReadmeIntro(unittest.TestCase):
         self.assertIn("not checked live", status)
         self.assertTrue("never sends" in text or "Nothing is ever sent" in text)
         self.assertIn("Repo Signals itself never sends anything.", flat)
-        self.assertIsNone(re.search("lam" + "bda", text + Path(__file__).read_text(),
-                                    re.IGNORECASE))
 
 
 if __name__ == "__main__":

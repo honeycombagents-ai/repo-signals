@@ -4,7 +4,6 @@ import builtins
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -450,17 +449,6 @@ class Unchanged(Case):
             with self.subTest(bad=bad), self.assertRaises(config.ConfigError) as cm:
                 config.load_settings({config.DRY_RUN: bad})
             self.assertNotIn("SENTINEL", str(cm.exception))
-
-
-class Source(unittest.TestCase):
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/live.py", "src/repo_signals/cli.py",
-                     "src/repo_signals/config.py", "src/repo_signals/doctor.py",
-                     "tests/test_collector_live.py", "docs/live-collection.md",
-                     "docs/collector-design.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

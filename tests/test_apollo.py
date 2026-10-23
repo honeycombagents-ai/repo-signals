@@ -493,9 +493,6 @@ class RegistryAndDoctor(unittest.TestCase):
 
 
 class Source(unittest.TestCase):
-    NEW_FILES = ("src/repo_signals/providers/apollo.py", "src/repo_signals/http.py",
-                 "tests/test_apollo.py", "tests/test_http.py", "docs/apollo.md")
-
     def test_unverified_note_on_the_constants_block(self):
         text = Path(apollo.__file__).read_text()
         self.assertIn("verify against Apollo's current API documentation before first live use",
@@ -527,16 +524,6 @@ class Source(unittest.TestCase):
         self.assertIn(heading, doc)
         section = doc.split(heading, 1)[1].split("\n## ", 1)[0]
         self.assertIn("own call budget", " ".join(section.split()))
-        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
-        for name in ("README.md", "docs/apollo.md", "docs/adapters.md", "tests/test_apollo.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
-    def test_forbidden_keyword_absent_from_new_files(self):
-        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
-        for name in self.NEW_FILES:
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

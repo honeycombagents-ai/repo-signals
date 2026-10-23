@@ -4,6 +4,10 @@
 *.key
 *.pem
 credentials*.json
+service-account.json
+*-service-account*.json
+# Google's default key file name: <project id>-<12 hex characters>.json
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].json
 .secrets/
 
 # local data
@@ -16,3 +20,8 @@ __pycache__/
 *.py[cod]
 .venv/
 *.egg-info/
+dist/
+build/
+
+# operating system
+.DS_Store

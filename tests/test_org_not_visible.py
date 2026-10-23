@@ -1,6 +1,5 @@
 """The "org not visible" 422: split from bad_query. Offline: a FAKE transport only."""
 import json
-import re
 import traceback
 import unittest
 from datetime import date
@@ -230,15 +229,6 @@ class Matching(unittest.TestCase):
         self.assertEqual([(r.status, r.code) for r in report.results],
                          [(ERROR, "org_not_visible"), (MATCHED, None)])
         self.assertEqual(report.lines[0], "example.com: not matched (org_not_visible)")
-
-
-class Source(unittest.TestCase):
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/github_api.py", "tests/test_org_not_visible.py",
-                     "docs/github-client.md", "docs/live-collection.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

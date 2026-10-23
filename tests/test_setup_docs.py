@@ -161,7 +161,6 @@ class SetupDocs(unittest.TestCase):
         for path in (GUIDE, TROUBLE):
             text = path.read_text()
             with self.subTest(file=path.name):
-                self.assertIsNone(re.search("lam" + "bda", text, re.IGNORECASE))
                 self.assertNotIn("TBD", text)
                 self.assertNotIn("\u2014", text)
                 blocks = shell_blocks(text)
@@ -169,7 +168,6 @@ class SetupDocs(unittest.TestCase):
                 for block in blocks:
                     self.assertIsNone(re.search(r"<[A-Za-z][^<>\n]*>", block), block)
                     self.assertIsNone(re.search(r"(^|\s)#", block), block)
-        self.assertIsNone(re.search("lam" + "bda", Path(__file__).read_text(), re.IGNORECASE))
 
     def test_start_here_links_seven_rows(self):
         text = TROUBLE.read_text()

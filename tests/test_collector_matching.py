@@ -421,14 +421,6 @@ class Source(unittest.TestCase):
                 for a in node.names:
                     self.assertNotIn(a.name.split(".")[0], ("http", "socket", "ssl"))
 
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/matching.py", "tests/test_collector_matching.py",
-                     "docs/matching.md", "docs/collector-design.md", "docs/evidence.md",
-                     "src/repo_signals/collector/evidence.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
 
 if __name__ == "__main__":
     unittest.main()

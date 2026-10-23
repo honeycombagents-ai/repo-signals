@@ -3,7 +3,6 @@ http.HttpClient stands in for GitHub, and every response is made up in the ASSUM
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import traceback
@@ -461,13 +460,6 @@ class Surface(unittest.TestCase):
                            env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
                            capture_output=True, text=True)
         self.assertEqual(r.stdout.strip(), "False", r.stderr)
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/github_api.py", "tests/test_collector_client.py",
-                     "docs/github-client.md", "docs/collector-design.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

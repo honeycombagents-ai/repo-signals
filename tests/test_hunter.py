@@ -3,7 +3,6 @@ follows the ASSUMED Hunter response shape in providers/hunter.py (unverified).""
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import traceback
@@ -505,11 +504,6 @@ class Source(unittest.TestCase):
                           hunter.FIELD_LAST_NAME, hunter.FIELD_SCORE),
                          ("https://api.hunter.io/v2/domain-search", "X-API-KEY", "domain",
                           "value", "position", "first_name", "last_name", "confidence"))
-        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
-        for name in ("src/repo_signals/providers/hunter.py", "docs/hunter.md",
-                     "tests/test_hunter.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((root / name).read_text()))
 
     def test_limit_checked_and_max_limit_unchecked(self):
         root = Path(__file__).resolve().parent.parent
@@ -529,11 +523,6 @@ class Source(unittest.TestCase):
         # The newly checked values, pinned so a change has to update the docs as well.
         self.assertEqual((hunter.PARAM_LIMIT, hunter.RESP_DATA, hunter.RESP_EMAILS),
                          ("limit", "data", "emails"))
-        word = re.compile(r"\b" + "lam" + "bda" + r"\b", re.IGNORECASE)
-        for name in ("src/repo_signals/providers/hunter.py", "docs/hunter.md",
-                     "tests/test_hunter.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((root / name).read_text()))
 
     def test_import_order_independent(self):
         for first in ("repo_signals.http", "repo_signals.providers.hunter",

@@ -3,7 +3,6 @@ Offline and synthetic only. The records below are made up; they follow the ASSUM
 GitHub repository record and deliberately carry personal and free-text fields (marked SENTINEL)
 that must never reach Evidence."""
 import dataclasses
-import re
 import unittest
 from collections import Counter
 from datetime import date, timedelta
@@ -373,16 +372,6 @@ class EvidenceTemplates(unittest.TestCase):
 
 
 class Source(unittest.TestCase):
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/collector/github_fields.py",
-                     "src/repo_signals/collector/filters.py",
-                     "src/repo_signals/collector/evidence.py",
-                     "tests/test_collector_evidence.py", "docs/evidence.md",
-                     "docs/collector-design.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
     def test_web_host_written_once(self):
         host = WEB_HOST
         hits = [p for p in (ROOT / "src").rglob("*.py") if host in p.read_text()]

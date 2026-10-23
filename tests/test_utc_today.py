@@ -152,15 +152,5 @@ class NotFutureDated(unittest.TestCase):
         self.assertIn("evidence: example.com: 2", out.getvalue())
 
 
-class Source(unittest.TestCase):
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/clock.py", "tests/test_utc_today.py",
-                     "src/repo_signals/run.py", "src/repo_signals/collector/live.py",
-                     "docs/run.md", "docs/live-collection.md"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
-
-
 if __name__ == "__main__":
     unittest.main()

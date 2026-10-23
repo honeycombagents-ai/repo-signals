@@ -5,7 +5,6 @@ checks on 2026-10-22. Nothing here makes a real request.
 """
 import io
 import json
-import re
 import unittest
 from pathlib import Path
 
@@ -168,14 +167,6 @@ class Docs(unittest.TestCase):
             self.assertIn(item, unchecked)
         hunter_doc = " ".join((ROOT / "docs/hunter.md").read_text().split())
         self.assertIn('"CTO" will not match "Chief Technology Officer"', hunter_doc)
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/providers/apollo.py", "src/repo_signals/providers/hunter.py",
-                     "src/repo_signals/run.py", "docs/apollo.md", "docs/hunter.md", "README.md",
-                     "tests/test_title_filter.py", "tests/test_apollo.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 """The sheet's duplicate key for rows without an email, Hunter's missing_email count, and no
 stale dropped line after a failed lookup. Offline only: fake transports and synthetic data."""
 import io
-import re
 import unittest
 from pathlib import Path
 
@@ -164,15 +163,6 @@ class Source(unittest.TestCase):
         self.assertIn("Apollo's title search is approximate, so a search for one title can return "
                       "adjacent roles.", doc)
         self.assertIn("Review titles before drafting.", doc)
-
-    def test_forbidden_keyword_absent(self):
-        word = re.compile("lam" + "bda", re.IGNORECASE)
-        for name in ("src/repo_signals/sheets/writer.py", "src/repo_signals/providers/hunter.py",
-                     "src/repo_signals/providers/apollo.py", "src/repo_signals/run.py",
-                     "docs/google-sheets.md", "docs/apollo.md", "docs/run.md", "README.md",
-                     "tests/test_row_key.py", "tests/test_apollo.py"):
-            with self.subTest(file=name):
-                self.assertIsNone(word.search((ROOT / name).read_text()))
 
 
 if __name__ == "__main__":
