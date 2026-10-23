@@ -223,8 +223,8 @@ class Prompt(Case):
         self.assertEqual(lines[:8], [
             "run: live plan", "signal: synthetic", "targets: 2 (2 planned, 0 skipped as suppressed)",
             "terms: 1",
-            "max calls: github 4 of 10; provider at most 2 of 5; sheets at most 5 of 10; search "
-            "ceiling 30 per minute (unverified)",
+            "max calls: github 4 of 10; provider at most 2 of 5; sheets 5 for one append, plus 1 "
+            "per extra append as needed, at most 10; search ceiling 30 per minute (unverified)",
             "provider: fake", "sheet: SENT... (masked)", "nothing is ever sent by email"])
 
     def test_no_yes_flag(self):

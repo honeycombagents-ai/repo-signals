@@ -7,6 +7,13 @@
   empty, same name, title and company_domain) is skipped: never duplicated, never overwritten.
   Apollo rows have a first name and no email, so the title keeps two people with the same first
   name at one company apart. A changed title can therefore produce a second row.
+- New rows go out in order, in one or more appends. Each append body stays within
+  APPEND_CHUNK_BYTES (60 KB, a margin below the HTTP client's 64 KB MAX_REQUEST_BYTES), and each
+  append is charged to the sheets budget. The header check and the duplicate check run once,
+  before the first append. If an append fails, the earlier ones stay written and the failure is
+  raised as ``AppendStopped`` (the code, plus how many rows were written and not written). A
+  row whose own append body would pass MAX_REQUEST_BYTES stops the write with ``row_too_large``
+  before any call for it is charged.
 - reviewed is always written empty. email_draft is written empty, or with an initial draft when
   the record supplies one; either way only on a NEW row. Existing rows are never written again.
 - Every cell built from external data passes the formula-injection guard: a value starting with
@@ -23,6 +30,7 @@ from typing import NamedTuple
 
 from ..budget import CallBudget
 from ..config import Settings
+from ..http import MAX_REQUEST_BYTES, json_body_size
 from ..models import Person
 from ..providers.base import ProviderError
 from . import google_api as g
@@ -31,8 +39,8 @@ from .client import DEFAULT_TAB, SheetsClient, build_http
 from .cells import guard_cell, mask_email
 from .layout import COLUMNS, LAST_COLUMN, PROTECTED_COLUMNS
 
-__all__ = ["COLUMNS", "PROTECTED_COLUMNS", "SheetWriter", "WriteResult", "guard_cell",
-           "mask_email"]
+__all__ = ["APPEND_CHUNK_BYTES", "AppendStopped", "COLUMNS", "PROTECTED_COLUMNS", "SheetWriter",
+           "WriteResult", "guard_cell", "mask_email", "split_appends"]
 
 DRY_RUN_PREVIEW_ROWS = 3
 DRY_RUN_SHOWN = ("name", "email", "title", "company_domain", "source", "confidence",
@@ -41,10 +49,53 @@ _RUN_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 _I = {name: i for i, name in enumerate(COLUMNS)}
 
 
+APPEND_CHUNK_BYTES = 60 * 1024     # a safety margin below MAX_REQUEST_BYTES (64 KB)
+_EMPTY_APPEND = json_body_size({g.BODY_VALUES: []})
+
+
 class WriteResult(NamedTuple):
     appended: int
     skipped: int
     dry_run: bool
+
+
+class AppendStopped(ProviderError):
+    """An append that stopped part-way: the code, and how many new rows were and were not written.
+
+    Numbers only, never row content. Rows already written stay written.
+    """
+
+    def __init__(self, code, written, not_written):
+        super().__init__(code)
+        self.written = written
+        self.not_written = not_written
+
+
+def split_appends(rows, limit=APPEND_CHUNK_BYTES):
+    """``(chunks, stop)``: rows in order, split so each append body stays within ``limit``.
+
+    Sizes are measured with ``http.json_body_size``, the client's own measurement: a chunk's body
+    is the empty append body plus each row's encoded bytes plus one comma between rows. A row that
+    does not fit within ``limit`` even alone, but fits MAX_REQUEST_BYTES, goes in a chunk by
+    itself. ``stop`` is the index of the first row whose own body would pass MAX_REQUEST_BYTES
+    (the chunks then hold only the rows before it), or None.
+    """
+    chunks, current, size = [], [], _EMPTY_APPEND
+    for i, row in enumerate(rows):
+        cost = json_body_size({g.BODY_VALUES: [row]}) - _EMPTY_APPEND
+        if _EMPTY_APPEND + cost > MAX_REQUEST_BYTES:
+            if current:
+                chunks.append(current)
+            return chunks, i
+        added = cost + (1 if current else 0)
+        if current and size + added > limit:
+            chunks.append(current)
+            current, size, added = [], _EMPTY_APPEND, cost
+        current.append(row)
+        size += added
+    if current:
+        chunks.append(current)
+    return chunks, None
 
 
 def _display(value, width=40):
@@ -191,7 +242,18 @@ class SheetWriter:
             client.update_cells(f"A1:{LAST_COLUMN}1", [list(COLUMNS)])
         rows, more = self._new_only(rows, existing)
         skipped += more
-        if rows:
-            client.append_rows(rows)
-        self._print(f"sheets: appended {len(rows)} row(s), skipped {skipped} duplicate(s)")
+        chunks, stop = split_appends(rows)
+        written = 0
+        try:
+            for chunk in chunks:
+                client.append_rows(chunk)
+                written += len(chunk)
+            if stop is not None:
+                raise ProviderError("row_too_large")
+        except ProviderError as e:
+            self._print(f"sheets: appended {written} row(s), {len(rows) - written} not written "
+                        f"({e.code}), skipped {skipped} duplicate(s)")
+            raise AppendStopped(e.code, written, len(rows) - written) from None
+        appends = f" in {len(chunks)} appends" if len(chunks) > 1 else ""
+        self._print(f"sheets: appended {len(rows)} row(s){appends}, skipped {skipped} duplicate(s)")
         return WriteResult(len(rows), skipped, False)

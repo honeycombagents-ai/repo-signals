@@ -119,13 +119,47 @@ You can add your own columns to the right of `written_at`. The tool never writes
 
 Every request is charged to the `CallBudget` **before** it is sent. That includes the token
 request. A call that would pass the cap never reaches the network and raises
-`budget_exhausted`. A typical live write costs 4 to 5 calls:
+`budget_exhausted`. A request body is measured before anything is charged: a body over the
+64 KB request limit is refused with `payload_too_large`, with no call charged and nothing sent.
+
+A live write costs:
 
 1. a token,
 2. reading the header row,
 3. reading the existing rows (to find duplicates),
 4. writing the header row, on an empty sheet only, and
-5. one append.
+5. one append for each 60 KB of new rows.
+
+So a write of up to about 45 typical rows (about 1.3 KB each) costs 4 or 5 calls, and each
+further 60 KB of rows adds one append. `REPO_SIGNALS_SHEETS_MAX_CALLS` (default 10) stays the
+hard limit: if it runs out part-way, the appends already sent stay written.
+
+## Appends of at most 60 KB
+
+The HTTP client refuses any request body over 64 KB (`MAX_REQUEST_BYTES` in
+`src/repo_signals/http.py`). New rows are therefore sent in order, split into appends whose
+encoded body is at most 60 KB, a margin below that limit. Each append is a separate call,
+charged to the budget before it is sent. The header check and the duplicate check run once,
+before the first append, and the header is written at most once.
+
+If an append fails (for example `budget_exhausted` or `server_error`), the appends before it
+stay written and nothing after it is sent. The run prints the code and how many new rows were
+written and how many were not. Running again is safe: the rows already written are found as
+duplicates and skipped, and only the rest are appended.
+
+A single row larger than 60 KB that still fits within 64 KB goes in an append by itself. A
+single row whose own append body would pass 64 KB (an unusually long name, title or draft) stops
+the write with `row_too_large` before any call is charged for it. Rows in earlier appends
+stay written; that row and the rows after it are not written.
+
+## The read limit
+
+Finding duplicates means reading every existing row in one request, and every response is
+capped at 1 MB. A typical row is about 1.3 KB, so a sheet of roughly 750 to 800 typical rows
+(fewer if the rows are long) makes that read fail with `response_too_large`. From then on every
+write to that sheet fails at the same step, and nothing is appended. This is a known limit: the
+tool never deletes or moves rows, so the sheet then needs trimming by hand (move older rows to
+another sheet or tab), or point `REPO_SIGNALS_SHEET_ID` at a new sheet.
 
 ## Auth and signing
 
@@ -173,6 +207,9 @@ sleeps and never retries.
 | `credentials_missing`, `credentials_unreadable`, `credentials_malformed` | a problem with the key file |
 | `openssl_not_found`, `signing_failed`, `signing_timeout` | from the built-in signer |
 | `budget_exhausted`, `budget_missing`, `sheet_id_missing` | see above |
+| `payload_too_large` | a request body over 64 KB, refused before it was charged or sent |
+| `row_too_large` | one new row too large for any append; see [Appends of at most 60 KB](#appends-of-at-most-60-kb) |
+| `response_too_large` | a response over 1 MB; when reading existing rows, see [The read limit](#the-read-limit) |
 
 ## Your responsibilities
 

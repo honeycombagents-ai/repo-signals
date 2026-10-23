@@ -5,9 +5,15 @@ handling secrets, the first live run, costs, and what may run unattended.
 
 ## Running locally
 
-You need Python 3.12 or newer. Repo Signals uses only the standard library.
+You need Python 3.12 or newer. Repo Signals uses only the standard library. Clone the
+repository, move into it, and install into a virtual environment (the `.venv` folder is ignored
+by the repository's `.gitignore`):
 
 ```sh
+git clone https://github.com/honeycombagents-ai/repo-signals.git
+cd repo-signals
+python3 -m venv .venv
+source .venv/bin/activate
 python3 -m pip install -e .
 repo-signals init --dir ~/repo-signals-config
 ```

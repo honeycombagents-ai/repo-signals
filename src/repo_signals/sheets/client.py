@@ -5,15 +5,17 @@ no DELETE or PATCH. ``update_cells`` refuses any range outside the tool's column
 range that would touch email_draft or reviewed below the header row.
 
 Every request (including each token request made by the auth) is charged to the CallBudget
-BEFORE it is sent. Failures are code-only ProviderErrors: never a URL, token, header, body,
-sheet id or credentials path.
+BEFORE it is sent. A request body is measured before anything is charged: a body over the HTTP
+client's MAX_REQUEST_BYTES raises ``payload_too_large`` with no call charged and nothing sent.
+Failures are code-only ProviderErrors: never a URL, token, header, body, sheet id or
+credentials path.
 """
 import math
 import re
 from urllib.parse import quote
 
 from ..budget import BudgetExceeded, CallBudget
-from ..http import HttpClient
+from ..http import MAX_REQUEST_BYTES, HttpClient, json_body_size
 from ..providers.base import ProviderError
 from . import google_api as g
 from .errors import status_code
@@ -67,6 +69,8 @@ class SheetsClient:
                                    range=quote(rng, safe="")) + suffix
 
     def _call(self, method, url, payload=None, params=None):
+        if payload is not None and json_body_size(payload) > MAX_REQUEST_BYTES:
+            raise ProviderError("payload_too_large")  # measured first: nothing charged or sent
         token = self._auth.token()
         try:
             self._budget.consume(1)

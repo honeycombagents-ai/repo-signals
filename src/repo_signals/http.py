@@ -72,6 +72,29 @@ class JsonResponse(tuple):
         return f"JsonResponse(status={self[0]})"
 
 
+def encode_json_body(payload) -> bytes:
+    """The exact bytes ``post_json`` and ``put_json`` send for ``payload`` (a dict).
+
+    Compact separators, ASCII only, no NaN. Anything that cannot be encoded is ``bad_payload``.
+    """
+    if not isinstance(payload, dict):
+        raise ProviderError("bad_payload")
+    try:
+        return json.dumps(payload, separators=(",", ":"), ensure_ascii=True,
+                          allow_nan=False).encode("ascii")
+    except (TypeError, ValueError, RecursionError):
+        raise ProviderError("bad_payload") from None
+
+
+def json_body_size(payload) -> int:
+    """The encoded size in bytes of a JSON POST or PUT body, exactly as the client sends it.
+
+    The client refuses a body over MAX_REQUEST_BYTES with ``payload_too_large``; callers that
+    must decide before spending a call (the sheets client and writer) measure with this.
+    """
+    return len(encode_json_body(payload))
+
+
 def _clean(text):
     return isinstance(text, str) and text != "" and all(
         0x20 < ord(c) < 0x7f for c in text)
@@ -232,26 +255,21 @@ class HttpClient:
         headers = self._check_headers(headers)
         return self._send(full, headers, timeout)
 
-    def _send_body(self, method, url, body, content_type, headers, timeout, params):
+    def _send_body(self, method, url, body, content_type, headers, timeout, params, size):
         timeout = _check_timeout(timeout)
         self._check_url(url)
         full = self._with_query(url, params)
-        if len(body) > MAX_REQUEST_BYTES:
+        if size > MAX_REQUEST_BYTES:
             raise ProviderError("payload_too_large")
         headers = self._check_headers(headers)
         if not any(k.lower() == "content-type" for k in headers):
             headers["Content-Type"] = content_type
         return self._send(full, headers, timeout, method, body)
 
-    @staticmethod
-    def _json_body(payload):
-        if not isinstance(payload, dict):
-            raise ProviderError("bad_payload")
-        try:
-            return json.dumps(payload, separators=(",", ":"), ensure_ascii=True,
-                              allow_nan=False).encode("ascii")
-        except (TypeError, ValueError, RecursionError):
-            raise ProviderError("bad_payload") from None
+    def _send_json(self, method, url, payload, headers, timeout, params):
+        body = encode_json_body(payload)
+        return self._send_body(method, url, body, "application/json", headers, timeout, params,
+                               json_body_size(payload))
 
     def post_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT,
                   params=None) -> JsonResponse:
@@ -261,14 +279,12 @@ class HttpClient:
         timeout, code-only errors. Query parameters go in ``params``, never in ``url``.
         The encoded request body is capped at MAX_REQUEST_BYTES.
         """
-        return self._send_body("POST", url, self._json_body(payload), "application/json",
-                               headers, timeout, params)
+        return self._send_json("POST", url, payload, headers, timeout, params)
 
     def put_json(self, url, payload, headers=None, timeout=DEFAULT_TIMEOUT,
                  params=None) -> JsonResponse:
         """PUT ``payload`` (a dict) as a JSON body. Same rules as ``post_json``."""
-        return self._send_body("PUT", url, self._json_body(payload), "application/json",
-                               headers, timeout, params)
+        return self._send_json("PUT", url, payload, headers, timeout, params)
 
     def post_form(self, url, fields, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
         """POST ``fields`` (a dict of strings) form-encoded. Same rules as ``post_json``."""
@@ -277,4 +293,4 @@ class HttpClient:
             raise ProviderError("bad_payload")
         body = urlencode(fields).encode("ascii")
         return self._send_body("POST", url, body, "application/x-www-form-urlencoded",
-                               headers, timeout, None)
+                               headers, timeout, None, len(body))

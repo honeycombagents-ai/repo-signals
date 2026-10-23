@@ -51,7 +51,7 @@ These are the codes most often seen in a first run, and what each one usually me
 | `tls_error` | The secure connection failed. | A proxy or security tool intercepting HTTPS, or a wrong system clock. |
 | `network_error` | The tool could not reach the service. | Your network connection, DNS and firewall. |
 | `redirect_refused` | The service answered with a redirect. Redirects are never followed. | The endpoint may have moved. Check the provider's doc. |
-| `response_too_large` | The answer was larger than 1 MB. | Nothing to set. Report it if it repeats. |
+| `response_too_large` | The answer was larger than 1 MB. | When reading a sheet's existing rows: the sheet has grown past the read limit (roughly 750 to 800 typical rows, see [google-sheets.md](google-sheets.md#the-read-limit)), and every later write fails here until you move older rows out of the sheet by hand. Otherwise nothing to set; report it if it repeats. |
 | `insecure_scheme` | A request was about to go out over something other than https. | This is a safety stop. Report it as a bug. |
 | `host_not_allowed` | A request was about to go to a host that is not on the allowlist. | This is a safety stop. Check for local edits to a constants block. |
 | `bad_url` | A request URL was malformed. | Report it as a bug, or check local edits to a constants block. |
@@ -59,7 +59,8 @@ These are the codes most often seen in a first run, and what each one usually me
 | `bad_header` | A request header held a character that is not allowed. | Re-set the key or token with `read -rs`: a pasted value may hold a stray character. |
 | `bad_params` | The query parameters for a request were not valid. | Report it as a bug. |
 | `bad_payload` | A request body could not be encoded. | Report it as a bug. |
-| `payload_too_large` | A request body was over the size limit. | Use fewer targets per run, so fewer rows are written at once. |
+| `payload_too_large` | A request body was over the 64 KB request limit. It was refused before sending, and no call was charged for it. | New rows are split into appends of at most 60 KB, so a sheet write should not hit this. If it does, report it as a bug. |
+| `row_too_large` | One new row is so large that an append holding only that row would pass the 64 KB request limit. The write stopped there: appends before that row stay written, and that row and the rows after it were not written. No call was charged for it. | The provider's fields for that person (an unusually long name or title), and very long sender details or evidence in the draft. The run prints how many rows were written and how many were not. |
 | `bad_transport_response` | A custom transport returned something that is not a response. | Only happens with your own transport in code or tests. |
 | `bad_date` | The GitHub client was given a malformed "pushed after" date. | Report it as a bug. |
 | `bad_org` | An organisation login does not have a valid shape. | The `org` value in the signal file. |

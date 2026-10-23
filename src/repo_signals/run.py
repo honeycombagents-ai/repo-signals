@@ -8,7 +8,8 @@ counts, the column layout and one sample row and draft with the email masked.
 and stdout are a terminal. It prints the plan and requires a typed "yes"; there is no flag to
 skip that. Real clients are built only after "yes". Each service has its own CallBudget. A stage
 that fails or hits its cap stops; later stages work on what exists, and the run is partial.
-Rows are only ever appended: a person already in the sheet is skipped and never updated.
+Rows are only ever appended, in one append per 60 KB of new rows: a person already in the sheet
+is skipped and never updated.
 Nothing is ever sent by email.
 """
 import os
@@ -40,10 +41,12 @@ from .providers.registry import default_registry
 from .run_gates import check_gates
 from .sheets.cells import mask_email
 from .sheets.layout import COLUMNS
-from .sheets.writer import SheetWriter
+from .sheets.writer import AppendStopped, SheetWriter
 
 PEOPLE_LIMIT = 3
-SHEETS_CALLS_PER_WRITE = 5          # token, header row, existing rows, header write, append
+# Token, header row, existing rows, header write and the first append. Each further append (one
+# per 60 KB of new rows) adds one call; the sheets budget stays the hard limit.
+SHEETS_CALLS_PER_WRITE = 5
 EXIT_COMPLETE, EXIT_DECLINED, EXIT_REFUSED_BEFORE_START = 0, 1, 2
 EXIT_PARTIAL, EXIT_REFUSED_BY_STAGE = 3, 4
 STOP_CODES = ("budget_exhausted", "rate_limited")
@@ -251,9 +254,10 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
           f"{len(plan.skipped)} skipped as suppressed)", file=out)
     print(f"terms: {len(signal.terms)}", file=out)
     print(f"max calls: github {plan.total} of {settings.max_calls}; provider at most "
-          f"{plan.targets_planned} of {settings.provider_max_calls}; sheets at most "
-          f"{SHEETS_CALLS_PER_WRITE} of {settings.sheets_max_calls}; search ceiling "
-          f"{SEARCH_RATE_CEILING_PER_MINUTE} per minute (unverified)", file=out)
+          f"{plan.targets_planned} of {settings.provider_max_calls}; sheets "
+          f"{SHEETS_CALLS_PER_WRITE} for one append, plus 1 per extra append as needed, at most "
+          f"{settings.sheets_max_calls}; search ceiling {SEARCH_RATE_CEILING_PER_MINUTE} per "
+          "minute (unverified)", file=out)
     print(f"provider: {settings.provider}", file=out)
     print(f"sheet: {settings.sheet_id[:4]}... (masked)", file=out)
     print("nothing is ever sent by email", file=out)
@@ -317,7 +321,11 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
                 refused = f"sheet: {e.code}"
             else:
                 partial.append(f"sheet: {e.code}")
-            print(f"sheet: not written ({e.code})", file=out)
+            if isinstance(e, AppendStopped):
+                print(f"sheet: stopped ({e.code}): {e.written} row(s) written, "
+                      f"{e.not_written} not written", file=out)
+            else:
+                print(f"sheet: not written ({e.code})", file=out)
 
     print(f"requests made: github {github_budget.used} of {settings.max_calls}, provider "
           f"{provider_budget.used} of {settings.provider_max_calls}, sheets "

@@ -150,7 +150,7 @@ these files:
   google_credentials=...), budget=..., http=..., signer=..., out=..., clock=..., run_id=...)`
   and calls `write(records)`, where each record is `(Person, signal_evidence, draft text)`. It
   treats the codes in `SHEET_REFUSAL_CODES` (`header_mismatch`, `header_missing`) as a refusal,
-  prints `SHEETS_CALLS_PER_WRITE` and the first 4 characters of the sheet id in the plan, charges
+  reports the written and not-written counts of an `AppendStopped` failure, prints `SHEETS_CALLS_PER_WRITE` and the first 4 characters of the sheet id in the plan, charges
   the sheet budget from `REPO_SIGNALS_SHEETS_MAX_CALLS`, and has the test seams `sheets_http`,
   `signer` and `clock`.
 - **`run_gates.py`**: `REPO_SIGNALS_SHEET_ID` and `REPO_SIGNALS_GOOGLE_CREDENTIALS` are gates, so
@@ -166,5 +166,6 @@ these files:
   `sheets/cells.py`.
 
 Duplicate detection lives in `SheetWriter._new_only` (with `_key` and `_name_key`) in
-`sheets/writer.py`. A replacement must bring its own, or every run writes the same people again.
+`sheets/writer.py`, and the split into appends under the request limit is `split_appends` in
+the same file. A replacement must bring its own, or every run writes the same people again.
 The tests in `tests/test_run.py` use a fake Google, so they need the same change.

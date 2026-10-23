@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- **Sheet appends are split under the request limit.** New rows go out in order, in appends of
+  at most 60 KB each, so a run with many people no longer fails with `payload_too_large` and
+  loses every row. Each append is charged to the sheets budget. If one fails, the earlier
+  appends stay written and the run prints how many rows were written and how many were not.
+- **New code `row_too_large`** for a single row too large for any append. The rows before it
+  stay written.
+- **A refused request body is no longer charged** to the sheets budget.
+- **The plan line** says 5 sheet calls for one append, plus 1 per extra append as needed.
+- **Documented the read limit:** reading the existing rows is one request capped at 1 MB, so a
+  sheet of roughly 750 to 800 typical rows needs trimming by hand (see
+  [docs/google-sheets.md](docs/google-sheets.md)).
+- **docs/deployment.md** now clones the repository and uses a virtual environment before
+  `pip install -e .`.
+
 ## 0.1.0 (2026-10-22)
 
 The first release. Nothing is ever sent by email: Repo Signals writes drafts into a sheet, and a

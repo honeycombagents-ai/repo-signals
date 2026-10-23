@@ -21,8 +21,8 @@ repo-signals run --live     # real requests, after the gates and a typed "yes"
    [drafting.md](drafting.md)). A person with no name, a suppressed person, or a person with no
    Evidence for their company gets no draft. Each skip is counted by code. Suppressed people get
    no row at all.
-4. **Sheet**: new rows are appended through the sheet writer (see
-   [google-sheets.md](google-sheets.md)).
+4. **Sheet**: new rows are appended through the sheet writer, in order, in one append per 60 KB
+   of new rows (see [google-sheets.md](google-sheets.md#appends-of-at-most-60-kb)).
 
 ## The three budgets
 
@@ -32,7 +32,7 @@ Each service has its own call budget. One stage hitting its cap never spends ano
 |---|---|---|
 | `REPO_SIGNALS_MAX_CALLS` | GitHub requests | 25 |
 | `REPO_SIGNALS_PROVIDER_MAX_CALLS` | people-provider requests | 25 |
-| `REPO_SIGNALS_SHEETS_MAX_CALLS` | Google requests, including the token | 10 |
+| `REPO_SIGNALS_SHEETS_MAX_CALLS` | Google requests, including the token and each append | 10 |
 
 Each must be a whole number from 1 to 500. When a stage fails or hits its cap, that stage stops,
 later stages run on what exists, and the run ends `partial` with the stage and code, for example
@@ -75,7 +75,10 @@ gates by name.
 
 Then the run prints the plan: targets, terms, the most calls each service could use against its
 budget, the provider name, the first 4 characters of the sheet id, and
-`nothing is ever sent by email`. You must type exactly `yes`. **There is no flag to skip the
+`nothing is ever sent by email`. For the sheet, the plan says 5 calls for one append, plus 1
+per extra append as needed. The number of appends depends on how many people are found and how
+long their rows are, which is not known until after the people stage, so the plan cannot give
+an exact worst case; `REPO_SIGNALS_SHEETS_MAX_CALLS` is the hard limit. You must type exactly `yes`. **There is no flag to skip the
 prompt.** The real GitHub client, the people provider and the sheet writer are built only after
 `yes`.
 
@@ -102,6 +105,10 @@ Only the sheet is written to, and only by appending rows in the fixed layout:
 | `reviewed` | always empty |
 | `run_id` | a fresh random hex id for this run |
 | `written_at` | the UTC time of the write |
+
+If a sheet append fails part-way, the appends before it stay written and the run prints
+`sheet: stopped (CODE): N row(s) written, M not written`. Running again skips the rows already
+written and appends the rest.
 
 Every value from outside passes the formula guard. A person already in the sheet (same email, or
 same name, title and company domain when there is no email) is **skipped and never updated**, so
