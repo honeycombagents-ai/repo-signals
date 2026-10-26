@@ -21,9 +21,10 @@ from ..providers.base import ProviderError
 from .github_api import GitHubClient
 from .orchestrate import COMPLETE, PARTIAL, REFUSED, collect, summarize
 from .plan import SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan
-from .signal import SignalError, _LOGIN_RE, signal_from_env
+from .signal import HUGGINGFACE, SignalError, _LOGIN_RE, signal_from_env
 
 CONFIRM_WORD = "yes"
+HF_NOT_IMPLEMENTED = "huggingface_not_implemented"   # no Hugging Face client exists yet
 EXIT_CODES = {COMPLETE: 0, PARTIAL: 3, REFUSED: 4}
 EXIT_NOT_CONFIRMED = 1
 EXIT_REFUSED_BEFORE_START = 2
@@ -101,6 +102,9 @@ def run_live(environ, stdin=None, out=None, err=None, http=None, today=None) -> 
         return EXIT_REFUSED_BEFORE_START
     if signal is None:
         print(f"collect: refused: {config.SIGNAL_FILE} is not set; nothing requested", file=err)
+        return EXIT_REFUSED_BEFORE_START
+    if signal.source == HUGGINGFACE:
+        print(f"collect: refused: {HF_NOT_IMPLEMENTED}; nothing requested", file=err)
         return EXIT_REFUSED_BEFORE_START
     try:
         suppression = suppression_from_env(environ)

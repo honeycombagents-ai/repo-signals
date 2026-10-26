@@ -100,7 +100,7 @@ class PassPaths(unittest.TestCase):
         self.assertIn("PASS REPO_SIGNALS_PROVIDER_MAX_CALLS not set: using the default of 25", out)
         self.assertIn("PASS REPO_SIGNALS_SHEETS_MAX_CALLS not set: using the default of 10", out)
         self.assertIn("PASS run --live is not armed; failing gates: REPO_SIGNALS_DRY_RUN", out)
-        self.assertIn("doctor: 24 pass, 0 warn, 0 fail", out)
+        self.assertIn("doctor: 25 pass, 0 warn, 0 fail", out)
 
     def test_explicit_provider_and_max_calls(self):
         code, out = run({**FULL, config.PROVIDER: "fake", config.MAX_CALLS: "500"})

@@ -239,9 +239,10 @@ def check_signal_file(environ):
         signal = load_signal(path)
     except SignalError as e:
         return [(PASS, f"{var} is set"), (FAIL, f"{var} file is not usable ({e.code})")]
-    return [(PASS, f"{var} is set"),
-            (PASS, f"{var} file parses: {len(signal.terms)} term(s), "
-                   f"{len(signal.targets)} target(s)")]
+    counts = f"{len(signal.terms)} term(s), {len(signal.targets)} target(s)"
+    if signal.source != "github":   # a GitHub file prints exactly as before
+        counts += f"; source {signal.source}, {len(signal.kinds)} kind(s)"
+    return [(PASS, f"{var} is set"), (PASS, f"{var} file parses: {counts}")]
 
 
 def run_checks(environ, registry, settings=None, version_info=None, which=None):
@@ -261,6 +262,8 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
                       config.DEFAULT_PROVIDER_MAX_CALLS),
         *check_budget(environ, config.SHEETS_MAX_CALLS, config.parse_sheets_max_calls,
                       config.DEFAULT_SHEETS_MAX_CALLS),
+        *check_budget(environ, config.HF_MAX_CALLS, config.parse_hf_max_calls,
+                      config.DEFAULT_HF_MAX_CALLS),
         *check_dry_run(settings, dry_run_problem),
         *check_live_armed(environ, settings),
         *check_optional(environ, config.SHEET_ID, config.parse_sheet_id,

@@ -12,6 +12,13 @@
     org = "example-org"             # optional GitHub organisation login
     confirm_org = true              # optional; include the org even if its website differs
 
+An optional top-level ``source`` is "github" (the default) or "huggingface". A file without it
+is a GitHub file, parsed exactly as before. For "huggingface" (see docs/huggingface-design.md):
+every target needs ``org`` and ``confirm_org = true`` (there is no website to match), domain-only
+targets are refused, ``kinds`` (a subset of model, dataset, space; default all) and
+``modified_within_days`` (1 to 3650; default 365) are allowed, and ``pushed_within_days`` and
+``language`` are refused. ``kinds`` and ``modified_within_days`` are refused with GitHub.
+
 Anything else is refused. Errors are code-only: they may name a key or a position (for example
 ``signal_target_3_bad_domain``) but never repeat file content.
 """
@@ -34,9 +41,17 @@ EVIDENCE_PER_TARGET = 10           # used by the collector, not by the plan
 SCHEMA_VERSION = 1
 MAX_TITLES = 5
 TITLE_MAX_CHARS = 60
+GITHUB, HUGGINGFACE = "github", "huggingface"
+SOURCES = (GITHUB, HUGGINGFACE)
+DEFAULT_SOURCE = GITHUB
+HF_KINDS = ("model", "dataset", "space")
+DEFAULT_MODIFIED_WITHIN_DAYS = 365
+MODIFIED_WITHIN_DAYS_MAX = 3650
+GITHUB_ONLY_KEYS = ("pushed_within_days", "language")
+HUGGINGFACE_ONLY_KEYS = ("kinds", "modified_within_days")
 
 TOP_KEYS = frozenset({"schema", "name", "terms", "language", "pushed_within_days", "targets",
-                      "titles"})
+                      "titles", "source", "kinds", "modified_within_days"})
 TARGET_KEYS = frozenset({"domain", "org", "confirm_org"})
 _CODE = re.compile(r"[a-z][a-z0-9_]{0,63}")
 _NAME_RE = re.compile(r"[a-z][a-z0-9-]{0,47}")
@@ -48,6 +63,8 @@ _TITLE_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9&./+-]| (?! ))*")
 _DOMAIN_RE = re.compile(r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
                         r"[a-z][a-z0-9-]{0,61}[a-z0-9]")
 # GitHub login shape (unverified): letters, digits, single inner hyphens, at most 39 characters.
+# Also used for Hugging Face organisation names for now: UNCHECKED for Hugging Face, whose name
+# rules have not been verified (docs/huggingface-design.md, open questions).
 _LOGIN_RE = re.compile(r"(?=.{1,39}\Z)[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
 
 
@@ -76,9 +93,13 @@ class Signal:
     language: str | None = None
     pushed_within_days: int = DEFAULT_PUSHED_WITHIN_DAYS
     titles: tuple[str, ...] = ()
+    source: str = DEFAULT_SOURCE
+    kinds: tuple[str, ...] = ()                  # Hugging Face only
+    modified_within_days: int | None = None      # Hugging Face only
 
     def __repr__(self):
-        return f"Signal({len(self.terms)} term(s), {len(self.targets)} target(s))"
+        extra = "" if self.source == GITHUB else f", {self.source}"
+        return f"Signal({len(self.terms)} term(s), {len(self.targets)} target(s){extra})"
 
 
 def _is_int(value):
@@ -123,7 +144,18 @@ def _titles(raw):
     return tuple(raw)
 
 
-def _targets(raw):
+def _kinds(raw):
+    if raw is None:
+        return HF_KINDS
+    if not isinstance(raw, list) or not raw or not all(isinstance(k, str) for k in raw) \
+            or not set(raw) <= set(HF_KINDS):
+        raise SignalError("signal_bad_kinds")
+    if len(set(raw)) != len(raw):
+        raise SignalError("signal_duplicate_kind")
+    return tuple(raw)
+
+
+def _targets(raw, source=DEFAULT_SOURCE):
     if raw is None:
         raise SignalError("signal_missing_targets")
     if not isinstance(raw, list):
@@ -154,6 +186,10 @@ def _targets(raw):
             raise SignalError("signal_duplicate_domain")
         if org is not None and org.lower() in orgs:
             raise SignalError("signal_duplicate_org")
+        if source == HUGGINGFACE and org is None:
+            raise SignalError(f"signal_target_{n}_hf_needs_org")   # a domain-only target
+        if source == HUGGINGFACE and not confirm:
+            raise SignalError(f"signal_target_{n}_hf_needs_confirm_org")
         domains.add(domain)
         if org is not None:
             orgs.add(org.lower())
@@ -182,6 +218,14 @@ def parse_signal(raw) -> Signal:
     schema = data.get("schema", SCHEMA_VERSION)
     if not _is_int(schema) or schema != SCHEMA_VERSION:
         raise SignalError("signal_bad_schema")
+    source = data.get("source", DEFAULT_SOURCE)
+    if source not in SOURCES:
+        raise SignalError("signal_bad_source")
+    if source == HUGGINGFACE:
+        return _parse_huggingface(data)
+    for key in HUGGINGFACE_ONLY_KEYS:
+        if key in data:
+            raise SignalError(f"signal_github_refuses_{key}")
     name = data.get("name")
     if name is None:
         raise SignalError("signal_missing_name")
@@ -198,6 +242,25 @@ def parse_signal(raw) -> Signal:
     return Signal(name=name, terms=terms, targets=_targets(data.get("targets")),
                   language=language, pushed_within_days=days,
                   titles=_titles(data.get("titles")))
+
+
+def _parse_huggingface(data) -> Signal:
+    for key in GITHUB_ONLY_KEYS:
+        if key in data:
+            raise SignalError(f"signal_hf_refuses_{key}")
+    name = data.get("name")
+    if name is None:
+        raise SignalError("signal_missing_name")
+    if not isinstance(name, str) or not _NAME_RE.fullmatch(name):
+        raise SignalError("signal_bad_name")
+    terms = _terms(data.get("terms"))
+    kinds = _kinds(data.get("kinds"))
+    days = data.get("modified_within_days", DEFAULT_MODIFIED_WITHIN_DAYS)
+    if not _is_int(days) or not 1 <= days <= MODIFIED_WITHIN_DAYS_MAX:
+        raise SignalError("signal_bad_modified_within_days")
+    return Signal(name=name, terms=terms, targets=_targets(data.get("targets"), HUGGINGFACE),
+                  titles=_titles(data.get("titles")), source=HUGGINGFACE, kinds=kinds,
+                  modified_within_days=days)
 
 
 def load_signal(path) -> Signal:

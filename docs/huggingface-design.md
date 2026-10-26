@@ -1,7 +1,10 @@
 # Design: a Hugging Face source for the collector
 
-Status: **design only, nothing built.** This page describes how Repo Signals would gain a second
-collector source, Hugging Face, inside this repository. The GitHub collector
+Status: **build step 1 of 7 built** (section 12): the signal file's `source` key, the Hugging Face
+target rules, the request plan, `REPO_SIGNALS_HF_MAX_CALLS` and `collect --dry-run`. There is no
+client and no network code yet: `collect --live` and `run --live` refuse a Hugging Face file with
+`huggingface_not_implemented`. This page describes how Repo Signals gains a second collector
+source, Hugging Face, inside this repository. The GitHub collector
 ([collector-design.md](collector-design.md)) keeps working unchanged: `source` defaults to
 `github`, so every existing signal file behaves exactly as before. Every Hugging Face detail named
 here is either in the "Checked live on 2026-10-26" list in section 10 or still unchecked.

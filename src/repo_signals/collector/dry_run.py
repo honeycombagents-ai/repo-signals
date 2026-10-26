@@ -9,8 +9,9 @@ import sys
 from .. import config
 from ..drafting.base import DraftError
 from ..drafting.suppression import suppression_from_env
-from .plan import SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan
-from .signal import SignalError, signal_from_env
+from .plan import (HF_PAGES_PER_LISTING, HF_RATE_CEILING_PER_WINDOW,
+                   SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan)
+from .signal import HUGGINGFACE, SignalError, signal_from_env
 
 PREVIEW_REQUESTS = 5
 
@@ -32,6 +33,12 @@ def run(environ=None, out=None, err=None) -> int:
     if signal is None:
         print(f"collect: {config.SIGNAL_FILE} is not set", file=err)
         return 1
+    if signal.source == HUGGINGFACE:
+        try:
+            budget_cap = config.parse_hf_max_calls(environ)
+        except config.ConfigError as e:
+            print(f"collect: {e}", file=err)
+            return 1
     try:
         suppression = suppression_from_env(environ)
     except DraftError as e:
@@ -47,9 +54,16 @@ def run(environ=None, out=None, err=None) -> int:
     print(f"targets: {len(signal.targets)} ({plan.targets_planned} planned, "
           f"{len(plan.skipped)} skipped as suppressed)", file=out)
     print(f"terms: {len(signal.terms)}", file=out)
-    print(f"planned requests: {plan.total} (core {plan.core_count}, search {plan.search_count}); "
-          f"budget {budget_cap}; search ceiling {SEARCH_RATE_CEILING_PER_MINUTE} per minute "
-          "(unverified)", file=out)
+    if signal.source == HUGGINGFACE:
+        print(f"source: huggingface; kinds: {', '.join(signal.kinds)}", file=out)
+        print(f"planned requests: at most {plan.total} (huggingface {plan.hf_count}: 1 overview "
+              f"per target, at most {HF_PAGES_PER_LISTING} pages per kind); budget {budget_cap} "
+              f"({config.HF_MAX_CALLS}); rate ceiling {HF_RATE_CEILING_PER_WINDOW} per 300 "
+              "seconds", file=out)
+    else:
+        print(f"planned requests: {plan.total} (core {plan.core_count}, search "
+              f"{plan.search_count}); budget {budget_cap}; search ceiling "
+              f"{SEARCH_RATE_CEILING_PER_MINUTE} per minute (unverified)", file=out)
     if plan.skipped:
         print(f"skipped (suppressed): {', '.join(plan.skipped)}", file=out)
     if plan.requests:

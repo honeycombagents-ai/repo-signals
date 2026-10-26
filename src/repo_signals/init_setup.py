@@ -51,6 +51,7 @@ VARIABLE_NOTES = {
     config.MAX_CALLS: "GitHub call budget, 1 to 500",
     config.PROVIDER_MAX_CALLS: "people-provider call budget, 1 to 500",
     config.SHEETS_MAX_CALLS: "Google Sheets call budget, 1 to 500",
+    config.HF_MAX_CALLS: "Hugging Face call budget, 1 to 500 (planned; no client yet)",
     config.SHEET_ID: "the Google Sheet id",
     config.GITHUB_TOKEN: "secret, optional: set it with read -rs",
     config.GOOGLE_CREDENTIALS: "path to the service-account key file, kept outside any repository",

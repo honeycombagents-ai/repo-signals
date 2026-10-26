@@ -78,6 +78,9 @@ Set `confirm_org = true` only for an org you know belongs to the company.
 | `pushed_within_days` | no | a whole number from 1 to 3650; default 365 |
 | `titles` | no | up to 5 job titles passed to the people provider by `repo-signals run`, for example `["CTO", "VP Engineering"]`: letters, digits, single spaces and `& . / + -`, at most 60 characters each, no duplicates (ignoring case). With Hunter, titles are filtered among only the first 3 people Hunter returns for each company, so a title may return nobody; Apollo filters titles on its own side. See [hunter.md](hunter.md) and [apollo.md](apollo.md) |
 | `targets` | yes | 1 to 50 `[[targets]]` tables |
+| `source` | no | `"github"` (the default) or `"huggingface"`. A file without it is a GitHub file and behaves exactly as before. See [Hugging Face signal files](#hugging-face-signal-files) |
+| `kinds` | no | Hugging Face only: a list of `"model"`, `"dataset"` and `"space"`, each at most once; default all three. Refused in a GitHub file |
+| `modified_within_days` | no | Hugging Face only: a whole number from 1 to 3650, the window on each item's last-modified date; default 365. Refused in a GitHub file |
 
 Each target:
 
@@ -86,6 +89,39 @@ Each target:
 | `domain` | yes | a hostname with at least one dot, for example `example.com`. It is stored in lowercase. |
 | `org` | no | a GitHub organisation login, the `NAME` in `github.com/NAME`: letters, digits and single inner hyphens, at most 39 characters (this shape is unverified). A domain such as `example.com` is refused (`signal_target_N_bad_org`) |
 | `confirm_org` | no | `true` or `false` (default `false`); `true` needs an `org` and includes the target even when the org's website is on another domain or missing (see Example 2) |
+
+## Hugging Face signal files
+
+`source = "huggingface"` selects the Hugging Face source (designed in
+[huggingface-design.md](huggingface-design.md)). Only the signal file, the request plan and
+`collect --dry-run` exist so far: `collect --live` and `run --live` refuse a Hugging Face file with
+`huggingface_not_implemented` and request nothing.
+
+```toml
+source = "huggingface"
+name = "examplelib-hf"
+terms = ["examplelib"]
+kinds = ["model", "dataset"]
+modified_within_days = 180
+
+[[targets]]
+domain = "example.com"
+org = "example-org"
+confirm_org = true
+```
+
+- Every target needs an `org` and `confirm_org = true`. Hugging Face organisation profiles have no
+  website field, so your confirmation is the only link between a company and an organisation. A
+  target without an `org` (domain only) is refused with `signal_target_N_hf_needs_org`, and one
+  without `confirm_org = true` with `signal_target_N_hf_needs_confirm_org`.
+- `pushed_within_days` and `language` are GitHub-only and refused (`signal_hf_refuses_KEY`);
+  `kinds` and `modified_within_days` are Hugging Face-only and refused in a GitHub file
+  (`signal_github_refuses_KEY`).
+- The `org` shape check is the GitHub one for now. Hugging Face's own rules for organisation names
+  are unchecked.
+- The plan is at most 1 + 2 x kinds requests per target: one organisation overview, then at most
+  two pages per kind. It is charged to `REPO_SIGNALS_HF_MAX_CALLS` (1 to 500, default 25), not to
+  `REPO_SIGNALS_MAX_CALLS`.
 
 ## Validation rules
 

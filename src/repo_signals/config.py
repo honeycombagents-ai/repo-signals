@@ -6,6 +6,8 @@
                                people-provider call cap for "run": 1 to the hard bound (default: 25)
     REPO_SIGNALS_SHEETS_MAX_CALLS
                                Google Sheets call cap for "run": 1 to the hard bound (default: 10)
+    REPO_SIGNALS_HF_MAX_CALLS  Hugging Face call cap for a "huggingface" signal file: 1 to the
+                               hard bound (default: 25). Planned only: no client exists yet.
     REPO_SIGNALS_SHEET_ID      Google Sheet id (optional)
     REPO_SIGNALS_GITHUB_TOKEN  GitHub token (optional)
     REPO_SIGNALS_GOOGLE_CREDENTIALS
@@ -38,8 +40,10 @@ PROVIDER = "REPO_SIGNALS_PROVIDER"
 MAX_CALLS = "REPO_SIGNALS_MAX_CALLS"
 PROVIDER_MAX_CALLS = "REPO_SIGNALS_PROVIDER_MAX_CALLS"
 SHEETS_MAX_CALLS = "REPO_SIGNALS_SHEETS_MAX_CALLS"
+HF_MAX_CALLS = "REPO_SIGNALS_HF_MAX_CALLS"
 DEFAULT_PROVIDER_MAX_CALLS = 25
 DEFAULT_SHEETS_MAX_CALLS = 10
+DEFAULT_HF_MAX_CALLS = 25
 SHEET_ID = "REPO_SIGNALS_SHEET_ID"
 GITHUB_TOKEN = "REPO_SIGNALS_GITHUB_TOKEN"
 GOOGLE_CREDENTIALS = "REPO_SIGNALS_GOOGLE_CREDENTIALS"
@@ -104,6 +108,10 @@ def parse_provider_max_calls(environ) -> int:
 
 def parse_sheets_max_calls(environ) -> int:
     return _parse_cap(environ, SHEETS_MAX_CALLS, DEFAULT_SHEETS_MAX_CALLS)
+
+
+def parse_hf_max_calls(environ) -> int:
+    return _parse_cap(environ, HF_MAX_CALLS, DEFAULT_HF_MAX_CALLS)
 
 
 def parse_sheet_id(environ) -> str | None:
@@ -185,6 +193,7 @@ class Settings:
     dry_run: bool = True
     provider_max_calls: int = DEFAULT_PROVIDER_MAX_CALLS
     sheets_max_calls: int = DEFAULT_SHEETS_MAX_CALLS
+    hf_max_calls: int = DEFAULT_HF_MAX_CALLS
 
     def __repr__(self):
         shown = ", ".join(
@@ -207,4 +216,5 @@ def load_settings(environ=None) -> Settings:
         dry_run=parse_dry_run(environ),
         provider_max_calls=parse_provider_max_calls(environ),
         sheets_max_calls=parse_sheets_max_calls(environ),
+        hf_max_calls=parse_hf_max_calls(environ),
     )

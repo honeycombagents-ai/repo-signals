@@ -74,6 +74,7 @@ because the preflight reads only the first row.
 | `bad_language` | A language value is not valid, either in a search or on a repository. | The `language` in the signal file: one word, at most 32 characters. |
 | `plan_over_budget` | The planned GitHub requests are more than `REPO_SIGNALS_MAX_CALLS`. Nothing was requested. | Raise `REPO_SIGNALS_MAX_CALLS`, or use fewer targets or terms. `collect --dry-run` shows the plan. |
 | `plan_over_search_rate` | The planned searches are over the ceiling of 30 per minute. Nothing was requested. | Use fewer targets or terms per run. |
+| `plan_over_hf_rate` | A Hugging Face plan is over its ceiling of 400 requests per 300 seconds (a margin below the anonymous limit). Nothing was requested. | Use fewer targets or kinds per run. |
 | `signal_unreadable` | The signal file could not be read. | The path in `REPO_SIGNALS_SIGNAL_FILE` and the file's permissions. |
 | `signal_path_malformed` | `REPO_SIGNALS_SIGNAL_FILE` is not a well-formed path. | Set it to the file's path, not its contents. |
 | `signal_too_large` | The signal file is over 64 KB. | Split it into smaller files. |
@@ -85,6 +86,12 @@ because the preflight reads only the first row.
 | `signal_bad_name` | `name` breaks the rules. | Lowercase letters, digits and `-`, starting with a letter, at most 48 characters. |
 | `signal_bad_language` | `language` breaks the rules. | One word: letters, digits and `+ # . -`, at most 32 characters. |
 | `signal_bad_pushed_within_days` | `pushed_within_days` is not a whole number from 1 to 3650. | Use a plain number, not a string. |
+| `signal_bad_source` | `source` is not `"github"` or `"huggingface"`. | Use one of the two, or leave `source` out for GitHub. |
+| `signal_github_refuses_KEY` | A GitHub file (no `source`, or `source = "github"`) has a Hugging Face key: `kinds` or `modified_within_days`. | Remove the key, or set `source = "huggingface"`. |
+| `signal_hf_refuses_KEY` | A Hugging Face file has a GitHub key: `pushed_within_days` or `language`. | Remove the key; use `modified_within_days` for the window. |
+| `signal_bad_kinds` | `kinds` is not a non-empty list of `model`, `dataset` and `space`. | For example `kinds = ["model", "dataset"]`, or leave it out for all three. |
+| `signal_duplicate_kind` | A kind is listed twice in `kinds`. | List each kind once. |
+| `signal_bad_modified_within_days` | `modified_within_days` is not a whole number from 1 to 3650. | Use a plain number, for example `365`. |
 | `signal_missing_terms` | The file has no `terms`. | Add `terms = ["..."]`. |
 | `signal_bad_terms` | `terms` is not a list of strings. | Use square brackets and quoted terms. |
 | `signal_no_terms` | `terms` is empty. | Add at least one term. |
@@ -105,6 +112,9 @@ because the preflight reads only the first row.
 | `signal_target_N_bad_org` | Target number N has a malformed `org`, for example a domain such as `example.com`. Nothing was requested. | Use the organisation name, the `NAME` in `github.com/NAME`: letters, digits and single inner hyphens, at most 39 characters. |
 | `signal_target_N_bad_confirm_org` | `confirm_org` on target N is not `true` or `false`. | Use `true` or `false` without quotes. |
 | `signal_target_N_confirm_org_without_org` | Target N has `confirm_org` but no `org`. | Add the `org`, or remove `confirm_org`. |
+| `signal_target_N_hf_needs_org` | Hugging Face target N has no `org`. A domain-only target cannot be matched, because Hugging Face organisation profiles have no website field. Nothing was requested. | Add the organisation name as `org`, with `confirm_org = true`. |
+| `signal_target_N_hf_needs_confirm_org` | Hugging Face target N has an `org` but not `confirm_org = true`. Your confirmation is the only link between a company and a Hugging Face organisation. | Set `confirm_org = true` only if you know the organisation belongs to the company. |
+| `huggingface_not_implemented` | The signal file has `source = "huggingface"`, but the Hugging Face collector is not built yet. `collect --dry-run` prints the plan; `collect --live` and `run --live` refuse with nothing requested. | Use a GitHub signal file for live runs for now. |
 | `signal_duplicate_domain` | Two targets have the same domain, ignoring case. | Remove the duplicate. |
 | `signal_duplicate_org` | Two targets have the same org, ignoring case. | Remove the duplicate. |
 | `missing_key` | The provider's API key variable is unset or blank. | `HUNTER_API_KEY` or `APOLLO_API_KEY`, set in this shell with `read -rs`. |
