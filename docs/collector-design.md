@@ -28,6 +28,8 @@ Out of scope for v1, deliberately:
 - Individuals: no commit authors, contributors, user accounts or emails (see section 6).
 - Sending anything. The collector only produces Evidence. A person reviews every draft.
 
+A Hugging Face source is designed, not built, in [huggingface-design.md](huggingface-design.md).
+
 The collector follows the conventions of the rest of Repo Signals: dry run by default, every
 request charged to a `CallBudget` before it is sent, settings from environment variables only,
 code-only errors, and an offline `doctor`.
