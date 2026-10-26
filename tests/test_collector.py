@@ -507,8 +507,8 @@ class NoNetwork(unittest.TestCase):
         self.assertEqual([f.name for f in files],
                          ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
                           "github_api.py", "github_fields.py", "hf_api.py", "hf_evidence.py",
-                          "hf_fields.py", "live.py", "matching.py", "orchestrate.py", "plan.py",
-                          "signal.py"])
+                          "hf_fields.py", "hf_matching.py", "live.py", "matching.py",
+                          "orchestrate.py", "plan.py", "signal.py"])
         # github_api.py and hf_api.py are the collector modules allowed to use http.HttpClient;
         # each is tested on its own (test_collector_client.py, test_hf_client.py). github_api.py
         # is reached from the CLI only through the gated probe-org, collect --live and run --live;

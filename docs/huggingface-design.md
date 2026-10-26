@@ -1,14 +1,16 @@
 # Design: a Hugging Face source for the collector
 
-Status: **build steps 1 to 3 of 7 built** (section 12): the signal file's `source` key, the
+Status: **build steps 1 to 4 of 7 built** (section 12): the signal file's `source` key, the
 Hugging Face target rules, the request plan, `REPO_SIGNALS_HF_MAX_CALLS` and `collect --dry-run`
 (step 1); the evidence filters and templates as pure functions (step 2, `collector/hf_fields.py`
-and `collector/hf_evidence.py`); and the client behind a fake transport (step 3,
+and `collector/hf_evidence.py`); the client behind a fake transport (step 3,
 `collector/hf_api.py`: the overview, listings, `Link` cursor pagination with a page cap,
-`RateLimit` parsing and sticky stops). None of it is wired to a command and nothing has made a
-real request: `collect --live` and `run --live` refuse a Hugging Face file with
-`huggingface_not_implemented`. This page describes how Repo Signals gains a second collector
-source, Hugging Face, inside this repository. The GitHub collector
+`RateLimit` parsing and sticky stops); and matching as pure logic (step 4,
+`collector/hf_matching.py`: the overview check, `confirm_org`, the `isVerified` note, the report
+lines and the stop on any client error other than `org_not_found`). None of it is wired to a
+command and nothing has made a real request: `collect --live` and `run --live` refuse a Hugging
+Face file with `huggingface_not_implemented`. This page describes how Repo Signals gains a
+second collector source, Hugging Face, inside this repository. The GitHub collector
 ([collector-design.md](collector-design.md)) keeps working unchanged: `source` defaults to
 `github`, so every existing signal file behaves exactly as before. Every Hugging Face detail named
 here is either in the "Checked live on 2026-10-26" list in section 10 or still unchecked.
