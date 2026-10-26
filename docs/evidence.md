@@ -119,3 +119,39 @@ phrase that implies a past relationship. Free text from a description or README 
 - An organisation's public email address.
 
 Nothing is written to disk.
+
+## Hugging Face records
+
+Build step 2 of the Hugging Face source ([huggingface-design.md](huggingface-design.md)) turns
+Hugging Face listing records into Evidence with the same pattern. It is pure and not yet wired to
+any command: no client exists.
+
+1. **Allowlist** (`collector/hf_fields.py`): only `id`, `author` (where present), `lastModified`,
+   `private`, `gated` and `disabled` are read. Descriptions, tags, downloads, likes, card data and
+   file lists are never read. A record that is not a dict, or has no `id` or `lastModified`, or an
+   `id` that is not `ORG/NAME` (letters, digits and `. _ -` in the name; the owner shape is
+   unchecked for Hugging Face), or a date that is not ISO 8601 UTC with a trailing Z, is dropped
+   under a code (`malformed_record`, `missing_id`, `missing_last_modified`, `bad_id`,
+   `bad_last_modified`).
+2. **Filters** (`collector/hf_evidence.py`), in order, each drop counted under a code:
+   - owner: the id's owner equals the target's `org`, ignoring case, and an `author`, when sent,
+     agrees (`owner_not_target`);
+   - public: `private` is exactly false (`private`); gated and disabled items are dropped
+     (`gated`, `disabled`), an unchecked default until gated and private items are checked live;
+   - recent: last modified within `modified_within_days` of today in UTC, inclusive
+     (`outside_window`); a future date is dropped (`modified_in_future`);
+   - term: the name part contains one of the terms, ignoring case; a term found only in the owner
+     part does not count (`term_not_in_name`).
+3. **Fixed templates:** one sentence per kind, built from the kind, `org/name`, the term and the
+   date only, with the URL built from a fixed prefix and the id and never requested:
+
+| kind | URL | summary |
+|---|---|---|
+| `hf-model` | `https://huggingface.co/{org}/{name}` | `The public Hugging Face model {org}/{name} matches the term {term}, last modified on {date}.` |
+| `hf-dataset` | `https://huggingface.co/datasets/{org}/{name}` | `The public Hugging Face dataset {org}/{name} matches the term {term}, last modified on {date}.` |
+| `hf-space` | `https://huggingface.co/spaces/{org}/{name}` | `The public Hugging Face Space {org}/{name} matches the term {term}, last modified on {date}.` |
+
+The summary rules are the same as for GitHub: one printable line, at most 300 characters, no URL
+and no `@`, every inserted value checked, and a failing hit dropped, never patched. At most 10
+items per target, deduplicated by URL (`over_target_cap`, `duplicate_url`). These drop codes are
+internal counts for now; they will be printed in the collect summary once the source is wired in.

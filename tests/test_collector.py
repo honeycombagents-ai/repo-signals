@@ -506,8 +506,8 @@ class NoNetwork(unittest.TestCase):
         files = sorted((ROOT / "src/repo_signals/collector").glob("*.py"))
         self.assertEqual([f.name for f in files],
                          ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
-                          "github_api.py", "github_fields.py", "live.py", "matching.py",
-                          "orchestrate.py", "plan.py", "signal.py"])
+                          "github_api.py", "github_fields.py", "hf_evidence.py", "hf_fields.py",
+                          "live.py", "matching.py", "orchestrate.py", "plan.py", "signal.py"])
         # github_api.py is the one collector module allowed to use http.HttpClient; it is
         # tested on its own (test_collector_client.py) and reached from the CLI only through the
         # gated probe-org, collect --live and run --live.
