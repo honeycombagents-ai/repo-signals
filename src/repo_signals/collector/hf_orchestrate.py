@@ -11,6 +11,9 @@ orchestrate.py and returns the same CollectResult and RunReport.
    requested; an unresolved target is never listed).
 3. Each matched target is listed once per kind, in the signal's order, with at most
    HF_PAGES_PER_LISTING pages. A kind whose overview count is zero is skipped without a request.
+   Each listing passes ``expand=None``, so the client expands exactly the fields its per-kind map
+   allows for that kind (Spaces reject ``gated``); the map lives in one place, the client's
+   constants block.
 4. Each target's records go through hf_evidence_for_target: the field allowlist, the filters, at
    most EVIDENCE_PER_TARGET items per target, deduplicated by URL. Every drop is counted.
 
@@ -33,7 +36,6 @@ from typing import Protocol
 from ..budget import HARD_MAX_CALLS
 from .filters import FilterReport
 from .hf_evidence import hf_evidence_for_target
-from .hf_fields import RECORD_KEYS
 from .hf_matching import match_hf_targets
 from .orchestrate import COMPLETE, PARTIAL, CollectResult, RunReport, SkippedSearch, _refused
 from .plan import HF_PAGES_PER_LISTING, PlanError, build_plan
@@ -46,8 +48,7 @@ NOT_ATTEMPTED = "not_attempted"
 # Codes a client raises BEFORE sending anything: those calls made no request.
 NO_REQUEST_CODES = ("budget_exhausted", "dry_run", "bad_org", "bad_kind", "bad_expand",
                     "bad_limit", "bad_cursor", "bad_max_pages")
-# Listings ask for exactly the allowlisted record fields (hf_fields), less the id.
-EXPAND = tuple(k for k in RECORD_KEYS if k != "id")
+EXPAND_FOR_KIND = None   # the client's per-kind expand list (see the module docstring)
 COUNT_FIELDS = {"model": "models", "dataset": "datasets", "space": "spaces"}
 _CODE_RE = re.compile(r"[a-z][a-z0-9_]{0,63}")
 
@@ -90,7 +91,8 @@ class _CountingClient:
 
     def list_all(self, kind, org):
         try:
-            listing = self._client.list_all(kind, org, EXPAND, max_pages=HF_PAGES_PER_LISTING)
+            listing = self._client.list_all(kind, org, EXPAND_FOR_KIND,
+                                            max_pages=HF_PAGES_PER_LISTING)
         except Exception as e:
             if getattr(e, "code", None) not in NO_REQUEST_CODES:
                 self.pages += 1

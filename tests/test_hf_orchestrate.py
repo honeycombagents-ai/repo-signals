@@ -1,6 +1,7 @@
 """Build step 5 of the Hugging Face source: orchestration. A fake client and synthetic records only
 (example-org names), with sockets patched to fail; no HTTP code is involved."""
 import ast
+import json
 import os
 import socket
 import subprocess
@@ -9,15 +10,19 @@ import unittest
 from datetime import date
 from pathlib import Path
 from unittest import mock
+from urllib.parse import parse_qs, urlsplit
 
 import _src  # noqa: F401
-from repo_signals.collector.hf_api import Listing, Overview
-from repo_signals.collector.hf_orchestrate import EXPAND, collect_hf
+from repo_signals.budget import CallBudget
+from repo_signals.collector.hf_api import (API_HOST, EXPAND_BY_KIND, HuggingFaceClient, Listing,
+                                           Overview)
+from repo_signals.collector.hf_orchestrate import collect_hf
 from repo_signals.collector.hf_matching import MATCHED, NOT_ATTEMPTED, SUPPRESSED, UNRESOLVED
 from repo_signals.collector.orchestrate import COMPLETE, PARTIAL, REFUSED, SkippedSearch
 from repo_signals.collector.plan import build_plan
 from repo_signals.collector.signal import HF_KINDS, Signal, Target, parse_signal
 from repo_signals.drafting.suppression import parse_suppression
+from repo_signals.http import HttpClient, RawResponse
 from repo_signals.providers import ProviderError
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -130,8 +135,7 @@ class HappyPath(NoSocket):
             ("page", "dataset", "example-org", 1), ("page", "space", "example-org", 1),
             ("page", "model", "example-labs", 1), ("page", "dataset", "example-labs", 1),
             ("page", "space", "example-labs", 1)])
-        self.assertEqual({a[2] for a in client.list_args}, {EXPAND})
-        self.assertEqual(EXPAND, ("author", "lastModified", "private", "gated", "disabled"))
+        self.assertEqual({a[2] for a in client.list_args}, {None})  # the client's per-kind list
         urls = {d: [e.url for e in items] for d, items in r.evidence_by_domain.items()}
         self.assertEqual(urls, {
             "example.com": [PREFIX["model"] + "example-org/examplelib-7b",
@@ -308,6 +312,48 @@ class Stops(NoSocket):
         self.assertEqual((r.run_report.status, r.run_report.code), (REFUSED, "plan_over_budget"))
         self.assertEqual(client.calls, [])
         self.assertEqual(r.evidence_by_domain, {})
+
+
+class ThroughTheClient(NoSocket):
+    """The real client behind a fake transport: what each listing request carries."""
+
+    def transport(self, spaces_status=200):
+        calls = []
+
+        def send(url, headers, timeout, max_bytes, method="GET", body=None):
+            calls.append(url)
+            path, query = urlsplit(url).path, parse_qs(urlsplit(url).query)
+            if path.endswith("/overview"):
+                data = {"name": "example-org", "isVerified": True, "numModels": 2,
+                        "numDatasets": 2, "numSpaces": 2, "details": "SENTINELBIO"}
+            elif path == "/api/spaces" and "gated" in query.get("expand", []):
+                return RawResponse(400, {}, b'{"error": "SENTINEL"}')
+            else:
+                kind = {"/api/models": "model", "/api/datasets": "dataset",
+                        "/api/spaces": "space"}[path]
+                data = [rec("example-org", f"examplelib-{kind}")]
+                if kind == "space":
+                    del data[0]["private"]
+                    data[0].update(private=False, disabled=False)   # no gated key, as observed
+                else:
+                    data[0].update(author="example-org", gated=False, disabled=False)
+            return RawResponse(200, {}, json.dumps(data).encode())
+
+        return send, calls
+
+    def test_spaces_are_requested_without_gated_and_yield_evidence(self):
+        send, calls = self.transport()
+        client = HuggingFaceClient(HttpClient((API_HOST,), transport=send), CallBudget(25),
+                                   dry_run=False)
+        r = collect_hf(signal(TWO[:1]), client, None, TODAY, budget_cap=25)
+        expands = {urlsplit(u).path: parse_qs(urlsplit(u).query).get("expand") for u in calls}
+        self.assertEqual(expands["/api/models"], list(EXPAND_BY_KIND["model"]))
+        self.assertEqual(expands["/api/datasets"], list(EXPAND_BY_KIND["dataset"]))
+        self.assertEqual(expands["/api/spaces"], ["author", "lastModified", "private", "disabled"])
+        self.assertEqual((r.run_report.status, r.run_report.skipped_searches), (COMPLETE, ()))
+        self.assertEqual([e.kind for e in r.evidence_by_domain["example.com"]],
+                         ["hf-model", "hf-dataset", "hf-space"])
+        self.assertEqual(r.run_report.requests_made, len(calls))
 
 
 class NotWired(unittest.TestCase):

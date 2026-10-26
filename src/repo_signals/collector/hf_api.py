@@ -47,9 +47,16 @@ from .signal import _LOGIN_RE
 # - The anonymous rate limit is 500 requests per 300-second fixed window, shared across
 #   endpoints, reported in the RateLimit and RateLimit-Policy headers.
 # - Public URL shapes: huggingface.co/ORG/NAME (model), /datasets/ORG/NAME, /spaces/ORG/NAME.
+# Checked live on 2026-10-27 (anonymous, read-only, org "huggingface"):
+# - /api/models and /api/datasets accept expand for author, lastModified, private, gated and
+#   disabled, and return all five on every record.
+# - /api/spaces returns 400 when expand includes gated; with author, lastModified, private and
+#   disabled it returns 200 and no gated key. Hence EXPAND_BY_KIND.
+# - private and disabled were false on every record seen.
 # Still unchecked: the 429 body and Retry-After; gated and private behaviour; the token quota and
 # scope; redirects for renamed repositories; user-owned repositories; the exact search
-# tokenisation; Hugging Face's terms for automated access and for outreach use.
+# tokenisation; whether a short page (fewer records than the limit) can carry a next cursor;
+# Hugging Face's terms for automated access and for outreach use.
 # For every unchecked item: verify against Hugging Face's current documentation before first
 # live use.
 API_HOST = "huggingface.co"
@@ -65,7 +72,9 @@ DIRECTION_DESCENDING = "-1"
 PARAM_LIMIT = "limit"
 PARAM_EXPAND = "expand"
 PARAM_CURSOR = "cursor"
-EXPAND_FIELDS = ("author", "lastModified", "private", "gated", "disabled")
+EXPAND_BY_KIND = {"model": ("author", "lastModified", "private", "gated", "disabled"),
+                  "dataset": ("author", "lastModified", "private", "gated", "disabled"),
+                  "space": ("author", "lastModified", "private", "disabled")}  # no gated: 400
 HEADER_LINK = "link"                          # lowercased, as HttpClient returns them
 LINK_REL_NEXT = "next"
 HEADER_RATE_LIMIT = "ratelimit"               # '"api";r=<remaining>;t=<seconds to reset>'
@@ -245,11 +254,15 @@ class HuggingFaceClient:
         return overview
 
     def list_repos(self, kind, org, expand=(), cursor=None, limit=MAX_PAGE_SIZE) -> ListingPage:
+        """One page. ``expand`` is a tuple of fields allowed for ``kind`` (EXPAND_BY_KIND), or
+        None for all of them; any other field is refused before sending (``bad_expand``)."""
         if kind not in LIST_PATHS:
             raise ProviderError("bad_kind")
         if not isinstance(org, str) or not _LOGIN_RE.fullmatch(org):
             raise ProviderError("bad_org")
-        if not isinstance(expand, tuple) or not set(expand) <= set(EXPAND_FIELDS):
+        if expand is None:
+            expand = EXPAND_BY_KIND[kind]
+        if not isinstance(expand, tuple) or not set(expand) <= set(EXPAND_BY_KIND[kind]):
             raise ProviderError("bad_expand")
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ProviderError("bad_limit")
@@ -268,12 +281,12 @@ class HuggingFaceClient:
         return ListingPage(tuple(data), next_cursor(headers, path))
 
     def list_all(self, kind, org, expand=(), limit=MAX_PAGE_SIZE, max_pages=MAX_PAGES) -> Listing:
-        """Up to ``max_pages`` pages (never more than MAX_PAGES). When a full last page still has
-        a next cursor, the result says ``listing_capped`` instead of raising."""
+        """Up to ``max_pages`` pages (never more than MAX_PAGES). When a next cursor remains after
+        the last page, full or not, the result says ``listing_capped`` instead of raising: whether
+        a short page can carry a next cursor is unchecked, so any remaining cursor counts."""
         if isinstance(max_pages, bool) or not isinstance(max_pages, int) \
                 or not 1 <= max_pages <= MAX_PAGES:
             raise ProviderError("bad_max_pages")
-        size = min(limit, MAX_PAGE_SIZE) if isinstance(limit, int) else limit
         records, cursor, pages = [], None, 0
         while pages < max_pages:
             page = self.list_repos(kind, org, expand, cursor, limit)
@@ -282,5 +295,4 @@ class HuggingFaceClient:
             cursor = page.next_cursor
             if cursor is None:
                 return Listing(tuple(records), pages, None)
-        last_full = len(page.records) >= size
-        return Listing(tuple(records), pages, LISTING_CAPPED if last_full else None)
+        return Listing(tuple(records), pages, LISTING_CAPPED)

@@ -54,7 +54,7 @@ because the preflight reads only the first row.
 | `unauthorised` | Hugging Face answered 401. Anonymously it answers this for an unknown or private repository, so the two cannot be told apart. The client stops for the rest of the run. (Not reachable from any command yet.) | The organisation and repository names. |
 | `bad_link` | A Hugging Face `Link` header for the next page pointed somewhere unexpected (another host or path, or a cursor that is not a short token of safe characters). It is never followed. (Not reachable from any command yet.) | Report it if it repeats: the API may have changed. |
 | `listing_capped` | A Hugging Face listing still had more pages after the page cap (2 pages of up to 500 items), so the result may be incomplete. (Not reachable from any command yet.) | Use fewer kinds or narrower terms, or check the organisation by hand. |
-| `bad_expand` | The Hugging Face client was asked to expand a field outside its allowlist. | Report it as a bug. |
+| `bad_expand` | The Hugging Face client was asked to expand a field outside its allowlist for that kind (Spaces do not accept `gated`). | Report it as a bug. |
 | `bad_limit` | The Hugging Face client was given a page size that is not a positive whole number. | Report it as a bug. |
 | `bad_cursor` | The Hugging Face client was given a page cursor that is not a short token of safe characters. | Report it as a bug. |
 | `bad_max_pages` | The Hugging Face client was asked for more pages than the plan allows (at most 2). | Report it as a bug. |

@@ -150,8 +150,10 @@ Per resolved target, at most:
 
 - 1 overview request;
 - then 1 listing per kind (up to 3), each with `author`, `sort=lastModified`, `direction=-1`, a page
-  size of at most 500 and `expand` for the allowlisted fields (models need `expand` for `author`,
-  `lastModified` and `gated`);
+  size of at most 500 and `expand` for the allowlisted fields of that kind: `author`,
+  `lastModified`, `private`, `gated` and `disabled` for models and datasets, and the same without
+  `gated` for Spaces, which refuse it with a 400 (the per-kind list lives in one place, the
+  client's constants block, and the client refuses any other field as `bad_expand`);
 - with at most 2 pages per listing, following the `Link` header's `rel="next"` cursor.
 
 So the upper bound is 1 + 3 x 2 = 7 requests per target. The plan counts this bound before
@@ -178,12 +180,13 @@ Every failure is a code-only error, never a URL, header or body.
 | 429 | `rate_limited` | sticky stop for the run; the reset time is read from the `RateLimit` header's `t=` seconds when present |
 | `RateLimit` shows 0 remaining | none | the next request is refused before it is sent |
 | 5xx | `server_error` | this request fails; the run continues |
-| a page of exactly the page size with the page cap reached, or a full 1,000 page | `listing_capped` | possibly incomplete: the result is marked partial |
+| a next cursor still present when the page cap is reached, whether or not the last page was full | `listing_capped` | possibly incomplete: the result is marked partial |
 | JSON in another shape | `unexpected_shape` | this request fails |
 | a redirect | `redirect_refused` | never followed (renamed repositories are unchecked) |
 
 Limits above 1,000 are silently capped at 1,000, so the collector never asks for more than it can
-check, and treats a full page as possibly incomplete.
+check. Whether a short page can carry a next cursor is unchecked, so any cursor left after the
+page cap marks the listing as possibly incomplete.
 
 ## 9. Privacy
 
@@ -221,6 +224,14 @@ Checked live on 2026-10-26 (anonymous, read-only, org `huggingface`):
 - [x] Public URL shapes: `huggingface.co/ORG/NAME` (model), `/datasets/ORG/NAME`,
       `/spaces/ORG/NAME`.
 
+Checked live on 2026-10-27 (anonymous, read-only, org `huggingface`):
+
+- [x] `/api/models` and `/api/datasets` accept `expand` for `author`, `lastModified`, `private`,
+      `gated` and `disabled`, and return all five on every record.
+- [x] `/api/spaces` returns 400 when `expand` includes `gated`; with `author`, `lastModified`,
+      `private` and `disabled` it returns 200 and no `gated` key.
+- [x] `private` and `disabled` were false on every record seen.
+
 Still unchecked, so check each of these before relying on it:
 
 - [ ] the 429 body and `Retry-After`
@@ -229,6 +240,7 @@ Still unchecked, so check each of these before relying on it:
 - [ ] redirects for renamed repositories
 - [ ] user-owned repositories
 - [ ] the exact search tokenisation
+- [ ] whether a short page (fewer records than the limit) can carry a next cursor
 - [ ] Hugging Face's terms for automated access and for outreach use
 
 ## 11. Open questions

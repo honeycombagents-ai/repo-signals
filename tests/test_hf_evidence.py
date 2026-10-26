@@ -193,6 +193,23 @@ class ForTarget(unittest.TestCase):
         self.assertTrue(all(e.kind == "hf-model" for e in evidence))
         self.assertIsInstance(report, FilterReport)
 
+    def test_a_space_without_a_gated_key_yields_evidence(self):
+        space = rec(name="examplelib-demo", disabled=False)    # as observed: no gated key
+        self.assertNotIn("gated", space)
+        evidence, report = run({"space": [space]}, signal(kinds=("space",)))
+        url = "https://huggingface.co/spaces/example-org/examplelib-demo"
+        self.assertEqual([(e.kind, e.url) for e in evidence], [("hf-space", url)])
+        self.assertEqual((report.kept, dict(report.dropped)), (1, {}))
+
+    def test_a_gated_model_is_still_dropped(self):
+        for gated in ("auto", "manual", True):
+            with self.subTest(gated=gated):
+                model = rec(name="examplelib-7b", author="example-org", gated=gated,
+                            disabled=False)
+                evidence, report = run({"model": [model]}, signal(kinds=("model",)))
+                self.assertEqual(evidence, ())
+                self.assertEqual(dict(report.dropped), {"gated": 1})
+
     def test_needs_a_hugging_face_signal(self):
         github = Signal(name="synthetic", terms=("examplelib",), targets=(TARGET,))
         with self.assertRaises(TypeError):

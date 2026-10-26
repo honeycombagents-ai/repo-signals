@@ -15,6 +15,7 @@ HEADINGS = ("# Design: a Hugging Face source for the collector", "## 1. Goal and
 UNCHECKED = ("the 429 body and `Retry-After`", "gated and private behaviour",
              "the token quota and scope", "redirects for renamed repositories",
              "user-owned repositories", "the exact search tokenisation",
+             "whether a short page (fewer records than the limit) can carry a next cursor",
              "Hugging Face's terms for automated access and for outreach use")
 
 
@@ -34,13 +35,22 @@ class HuggingFaceDesign(unittest.TestCase):
 
     def test_checked_list(self):
         checked = self.flat.split("Checked live on 2026-10-26 (anonymous, read-only, org "
-                                  "`huggingface`):", 1)[1].split("Still unchecked", 1)[0]
+                                  "`huggingface`):", 1)[1].split("Checked live on 2026-10-27", 1)[0]
         self.assertEqual(checked.count("- [x]"), 8)
         for phrase in ("no website, blog or domain field", "anonymous reads work",
                        "Search ignores case but is not a substring match",
                        "silently capped at 1,000", "an unknown or private repository returns 401",
                        "500 requests per 300-second fixed window",
                        "`/datasets/ORG/NAME`, `/spaces/ORG/NAME`"):
+            self.assertIn(phrase, checked)
+
+    def test_checked_list_2026_10_27(self):
+        checked = self.flat.split("Checked live on 2026-10-27 (anonymous, read-only, org "
+                                  "`huggingface`):", 1)[1].split("Still unchecked", 1)[0]
+        self.assertEqual(checked.count("- [x]"), 3)
+        for phrase in ("return all five on every record",
+                       "`/api/spaces` returns 400 when `expand` includes `gated`",
+                       "`private` and `disabled` were false on every record seen"):
             self.assertIn(phrase, checked)
 
     def test_unchecked_list(self):

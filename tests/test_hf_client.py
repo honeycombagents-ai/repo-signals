@@ -253,6 +253,64 @@ class Pagination(Case):
         self.raises("bad_max_pages", c.list_all, "space", "example-org", max_pages=3)
 
 
+class ExpandPerKind(Case):
+    def test_each_kind_sends_its_own_expand_list(self):
+        for kind, path, fields in (
+                ("model", "/api/models",
+                 ["author", "lastModified", "private", "gated", "disabled"]),
+                ("dataset", "/api/datasets",
+                 ["author", "lastModified", "private", "gated", "disabled"]),
+                ("space", "/api/spaces", ["author", "lastModified", "private", "disabled"])):
+            with self.subTest(kind=kind):
+                c, t, _ = live(raw([]))
+                c.list_all(kind, "example-org", None)
+                self.assertTrue(t.calls[0]["url"].startswith(API_BASE + path + "?"))
+                self.assertEqual(query(t.calls[0])["expand"], fields)
+
+    def test_gated_expand_for_spaces_is_refused_before_sending(self):
+        c, t, b = live(raw([]))
+        for expand in (("gated",), ("author", "gated"), hf_api.EXPAND_BY_KIND["model"]):
+            with self.subTest(expand=expand):
+                self.raises("bad_expand", c.list_repos, "space", "example-org", expand)
+                self.raises("bad_expand", c.list_all, "space", "example-org", expand)
+        self.assertEqual(t.calls, [])
+        self.assertEqual(b.used, 0)
+        c.list_repos("model", "example-org", ("gated",))
+        self.assertEqual(query(t.calls[0])["expand"], ["gated"])
+
+    def test_expand_map_stays_inside_the_record_allowlist(self):
+        from repo_signals.collector.hf_fields import RECORD_KEYS
+        self.assertEqual(set(hf_api.EXPAND_BY_KIND), set(hf_api.LIST_PATHS))
+        for kind, fields in hf_api.EXPAND_BY_KIND.items():
+            with self.subTest(kind=kind):
+                self.assertTrue(set(fields) <= set(RECORD_KEYS) - {"id"})
+        self.assertNotIn("gated", hf_api.EXPAND_BY_KIND["space"])
+
+    def test_capped_for_a_short_last_page_with_a_cursor_remaining(self):
+        c, t, _ = live(raw([{"id": "example-org/a"}], headers={**RATE, "Link": link("p2")}),
+                       raw([{"id": "example-org/b"}], headers={**RATE, "Link": link("p3")}))
+        listing = c.list_all("model", "example-org")
+        self.assertEqual((len(listing.records), listing.pages, listing.code),
+                         (2, 2, LISTING_CAPPED))
+        self.assertEqual(len(t.calls), 2)
+        c, t, _ = live(raw([{"id": "example-org/a"}], headers={**RATE, "Link": link("p2")}))
+        self.assertEqual(c.list_all("model", "example-org", max_pages=1).code, LISTING_CAPPED)
+        self.assertEqual(len(t.calls), 1)
+
+    def test_constants_block_records_the_2026_10_27_check(self):
+        src = (ROOT / "src/repo_signals/collector/hf_api.py").read_text()
+        block = " ".join(line.lstrip("# ") for line in src.split("# ---", 2)[1].splitlines())
+        for phrase in ('Checked live on 2026-10-27 (anonymous, read-only, org "huggingface")',
+                       "/api/spaces returns 400 when expand includes gated",
+                       "return all five on every record",
+                       "private and disabled were false on every record seen",
+                       "whether a short page (fewer records than the limit) can carry a next "
+                       "cursor"):
+            self.assertIn(phrase, block)
+        unchecked = block.split("Still unchecked:", 1)[1]
+        self.assertIn("gated and private behaviour", unchecked)
+
+
 class NotWired(unittest.TestCase):
     def test_cli_does_not_import_the_client(self):
         self.assertNotIn("hf_api", (ROOT / "src/repo_signals/cli.py").read_text())
