@@ -229,9 +229,10 @@ class NotWired(unittest.TestCase):
                 for a in node.names:
                     self.assertNotIn(a.name.split(".")[0], ("http", "socket", "ssl", "urllib"))
 
-    def test_no_module_imports_it(self):
+    def test_only_hf_orchestrate_imports_it(self):
+        # hf_orchestrate.py is itself unreachable from any command (test_hf_orchestrate.py).
         for path in sorted((ROOT / "src/repo_signals").rglob("*.py")):
-            if path.name != "hf_matching.py":
+            if path.name not in ("hf_matching.py", "hf_orchestrate.py"):
                 with self.subTest(path=path.name):
                     self.assertNotIn("hf_matching", path.read_text())
 
