@@ -50,6 +50,14 @@ because the preflight reads only the first row.
 | `bad_query` | GitHub refused a search with a 422 for any other reason. | The term and `language` in the signal file. |
 | `server_error` | The service answered with a 5xx error. | Nothing on your side. Try again later. |
 | `unexpected_status` | The service answered with a status the tool does not expect. | Try again later. If it repeats, the API may have changed: see the unverified constants in the provider's doc. |
+| `org_not_found` | Hugging Face answered 404 for the organisation overview: no organisation by that name. (The Hugging Face client is built but not reachable from any command yet.) | The `org` value in the signal file: the `NAME` in huggingface.co/NAME. |
+| `unauthorised` | Hugging Face answered 401. Anonymously it answers this for an unknown or private repository, so the two cannot be told apart. The client stops for the rest of the run. (Not reachable from any command yet.) | The organisation and repository names. |
+| `bad_link` | A Hugging Face `Link` header for the next page pointed somewhere unexpected (another host or path, or a cursor that is not a short token of safe characters). It is never followed. (Not reachable from any command yet.) | Report it if it repeats: the API may have changed. |
+| `listing_capped` | A Hugging Face listing still had more pages after the page cap (2 pages of up to 500 items), so the result may be incomplete. (Not reachable from any command yet.) | Use fewer kinds or narrower terms, or check the organisation by hand. |
+| `bad_expand` | The Hugging Face client was asked to expand a field outside its allowlist. | Report it as a bug. |
+| `bad_limit` | The Hugging Face client was given a page size that is not a positive whole number. | Report it as a bug. |
+| `bad_cursor` | The Hugging Face client was given a page cursor that is not a short token of safe characters. | Report it as a bug. |
+| `bad_max_pages` | The Hugging Face client was asked for more pages than the plan allows (at most 2). | Report it as a bug. |
 | `unexpected_shape` | A 2xx answer was JSON, but not in the shape the tool expects. | The API may have changed. Check the unverified-details checklist in [hunter.md](hunter.md), [apollo.md](apollo.md), [google-sheets.md](google-sheets.md) or [github-client.md](github-client.md). |
 | `malformed_json` | A 2xx answer was not JSON. | A proxy, VPN or captive portal answering in place of the service. |
 | `timeout` | The request took longer than the timeout. | Your network connection. Try again. |

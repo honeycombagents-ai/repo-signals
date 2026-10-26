@@ -506,14 +506,16 @@ class NoNetwork(unittest.TestCase):
         files = sorted((ROOT / "src/repo_signals/collector").glob("*.py"))
         self.assertEqual([f.name for f in files],
                          ["__init__.py", "dry_run.py", "evidence.py", "filters.py",
-                          "github_api.py", "github_fields.py", "hf_evidence.py", "hf_fields.py",
-                          "live.py", "matching.py", "orchestrate.py", "plan.py", "signal.py"])
-        # github_api.py is the one collector module allowed to use http.HttpClient; it is
-        # tested on its own (test_collector_client.py) and reached from the CLI only through the
-        # gated probe-org, collect --live and run --live.
+                          "github_api.py", "github_fields.py", "hf_api.py", "hf_evidence.py",
+                          "hf_fields.py", "live.py", "matching.py", "orchestrate.py", "plan.py",
+                          "signal.py"])
+        # github_api.py and hf_api.py are the collector modules allowed to use http.HttpClient;
+        # each is tested on its own (test_collector_client.py, test_hf_client.py). github_api.py
+        # is reached from the CLI only through the gated probe-org, collect --live and run --live;
+        # hf_api.py is not reachable from the CLI yet.
         # live.py is the CLI's live path: it builds the client after a typed confirmation and is
         # tested on its own (test_collector_live.py).
-        files = [f for f in files if f.name not in ("github_api.py", "live.py")]
+        files = [f for f in files if f.name not in ("github_api.py", "hf_api.py", "live.py")]
         for f in files:
             for node in ast.walk(ast.parse(f.read_text())):
                 with self.subTest(file=f.name, line=getattr(node, "lineno", 0)):

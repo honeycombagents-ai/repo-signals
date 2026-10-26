@@ -236,12 +236,19 @@ class HttpClient:
 
     @staticmethod
     def _with_query(url, params):
+        """``params`` values are strings or whole numbers, or a non-empty tuple of them, which is
+        sent as the same key repeated (``expand=a&expand=b``)."""
         params = {} if params is None else params
+
+        def scalar(v):
+            return isinstance(v, (str, int)) and not isinstance(v, bool)
+
         if not isinstance(params, dict) or not all(
-                isinstance(k, str) and isinstance(v, (str, int)) and not isinstance(v, bool)
+                isinstance(k, str) and (scalar(v) or (isinstance(v, tuple) and v
+                                                      and all(scalar(x) for x in v)))
                 for k, v in params.items()):
             raise ProviderError("bad_params")
-        return url + ("?" + urlencode(params) if params else "")
+        return url + ("?" + urlencode(params, doseq=True) if params else "")
 
     def get_json(self, url, params=None, headers=None, timeout=DEFAULT_TIMEOUT) -> JsonResponse:
         """GET ``url`` with ``params`` as the query string; return ``(status, parsed JSON)``.
