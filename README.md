@@ -145,6 +145,12 @@ To add your own provider, see [docs/adapters.md](docs/adapters.md).
 - **Public data can still be personal data.** GitHub data is public, but it is still personal
   data when it names people. Treat it that way.
 
+Hugging Face use. The Hugging Face source reads only public listing data, anonymously, within
+Hugging Face's published anonymous rate limit. It reads no free text, never scrapes web pages and
+never sends email. You are responsible for following Hugging Face's Terms of Service and
+policies, and for the legality of your own outreach (for example CAN-SPAM and GDPR). Check the
+current terms before you run it.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -76,5 +76,22 @@ class ReadmeIntro(unittest.TestCase):
         self.assertIn("Repo Signals itself never sends anything.", flat)
 
 
+class ReadmeHuggingFaceUse(unittest.TestCase):
+    def test_use_note_in_your_responsibilities(self):
+        text = (ROOT / "README.md").read_text()
+        section = text.split("\n## Your responsibilities\n", 1)[1].split("\n## ", 1)[0]
+        flat = " ".join(section.split())
+        self.assertIn(
+            "Hugging Face use. The Hugging Face source reads only public listing data, "
+            "anonymously, within Hugging Face's published anonymous rate limit. It reads no free "
+            "text, never scrapes web pages and never sends email. You are responsible for "
+            "following Hugging Face's Terms of Service and policies, and for the legality of "
+            "your own outreach (for example CAN-SPAM and GDPR). Check the current terms before "
+            "you run it.", flat)
+        self.assertNotIn("\u2014", section)
+        for claim in ("approved", "endorsed", "permitted by Hugging Face", "allowed by Hugging"):
+            self.assertNotIn(claim, section)
+
+
 if __name__ == "__main__":
     unittest.main()
