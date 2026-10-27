@@ -212,6 +212,17 @@ It never:
 - retries or sleeps: a rate limit stops the run;
 - writes anything to disk or sends anything anywhere except the Hugging Face API host.
 
+### Observed on a real organisation
+
+On 2026-10-27, `hf-probe-org huggingface` and an anonymous `collect --live` against the
+organisation `huggingface` worked as described above. The probe printed `is_verified: yes` and
+counts of 18 models, 48 datasets and 47 spaces. Each listing fitted in one page (18 models, 80
+datasets, 46 Spaces), and the Spaces listing worked without `gated` in its expand list. All 18
+models parsed and were then dropped: 16 as `outside_window` (older than 365 days) and 2 as
+`term_not_in_name`. Evidence came out with the right kind wording and links, and the cap of 10
+items per target dropped 4 items as `over_target_cap`. The full list is in
+[huggingface-design.md](huggingface-design.md#10-checked-and-unchecked-api-details).
+
 ## Verify against GitHub's current documentation
 
 Every endpoint, header, qualifier and field name is unverified general knowledge, kept in one

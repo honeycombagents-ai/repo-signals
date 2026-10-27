@@ -46,11 +46,22 @@ class HuggingFaceDesign(unittest.TestCase):
 
     def test_checked_list_2026_10_27(self):
         checked = self.flat.split("Checked live on 2026-10-27 (anonymous, read-only, org "
-                                  "`huggingface`):", 1)[1].split("Still unchecked", 1)[0]
+                                  "`huggingface`):", 1)[1].split(
+            "Checked live on 2026-10-27 (collect --live)", 1)[0]
         self.assertEqual(checked.count("- [x]"), 3)
         for phrase in ("return all five on every record",
                        "`/api/spaces` returns 400 when `expand` includes `gated`",
                        "`private` and `disabled` were false on every record seen"):
+            self.assertIn(phrase, checked)
+
+    def test_checked_list_2026_10_27_collect_live(self):
+        checked = self.flat.split("Checked live on 2026-10-27 (collect --live)", 1)[1].split(
+            "Still unchecked", 1)[0]
+        self.assertEqual(checked.count("- [x]"), 7)
+        for phrase in ("18 models, 48 datasets and 47 Spaces", "16 were outside a 365-day window",
+                       "80 records, one page", "46 records, one page",
+                       "4 dropped as `over_target_cap`", "No short-page cursor was seen",
+                       "`TERM_MIN_CHARS` is 2"):
             self.assertIn(phrase, checked)
 
     def test_unchecked_list(self):

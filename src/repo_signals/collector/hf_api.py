@@ -53,6 +53,18 @@ from .signal import _LOGIN_RE
 # - /api/spaces returns 400 when expand includes gated; with author, lastModified, private and
 #   disabled it returns 200 and no gated key. Hence EXPAND_BY_KIND.
 # - private and disabled were false on every record seen.
+# Checked live on 2026-10-27 (collect --live), anonymously, through collect --live and
+# hf-probe-org against the organisation "huggingface":
+# - hf-probe-org: isVerified yes; 18 models, 48 datasets and 47 Spaces.
+# - A model listing: 18 records in one page, all parsed (no bad id or bad date); 16 outside a
+#   365-day window, 2 without the term.
+# - A dataset listing (80 records, one page) and a Spaces listing (46 records, one page) both
+#   returned 200; Spaces with the per-kind expand (no gated) did not fail.
+# - Evidence had the right kind wording (model, dataset, Space), dates, and URLs under
+#   huggingface.co/, huggingface.co/datasets/ and huggingface.co/spaces/.
+# - The cap of 10 items per target worked (4 dropped as over_target_cap).
+# - No short-page cursor was seen (the unchecked item below stays unchecked).
+# - Terms of one character are refused (TERM_MIN_CHARS is 2).
 # Also seen live, in the earlier probe of the cursor: the Link header's cursor was 344 characters,
 # all in the allowed set, so the cursor limit is 1024 characters (it was 512).
 # Still unchecked: the 429 body and Retry-After; gated and private behaviour; the token quota and

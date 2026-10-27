@@ -234,6 +234,21 @@ Checked live on 2026-10-27 (anonymous, read-only, org `huggingface`):
       `private` and `disabled` it returns 200 and no `gated` key.
 - [x] `private` and `disabled` were false on every record seen.
 
+Checked live on 2026-10-27 (collect --live), anonymously, through `collect --live` and
+`hf-probe-org` against the organisation `huggingface`:
+
+- [x] `hf-probe-org` returned `isVerified` yes and counts of 18 models, 48 datasets and 47
+      Spaces.
+- [x] A model listing returned 18 records in one page, all parsed with no bad id or bad date; 16
+      were outside a 365-day window and 2 did not contain the term.
+- [x] A dataset listing (80 records, one page) and a Spaces listing (46 records, one page) both
+      returned 200; the Spaces listing with the per-kind `expand` (no `gated`) did not fail.
+- [x] Evidence came out with the right kind wording (model, dataset, Space), dates, and URLs
+      under `huggingface.co/`, `huggingface.co/datasets/` and `huggingface.co/spaces/`.
+- [x] The cap of 10 items per target worked (4 dropped as `over_target_cap`).
+- [x] No short-page cursor was seen. This does not settle the unchecked item below.
+- [x] Terms of one character are refused (`TERM_MIN_CHARS` is 2).
+
 Still unchecked, so check each of these before relying on it:
 
 - [ ] the 429 body and `Retry-After`
