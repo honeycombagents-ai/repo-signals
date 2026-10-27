@@ -49,13 +49,26 @@ On 2026-10-27, anonymously, against the organisation `huggingface`: `hf-probe-or
 `collect --live` listing models, datasets and Spaces. The overview fields, the listings with the
 per-kind expand list (Spaces refuse `gated` in it), the record fields, the evidence wording and
 links, and the cap of 10 items per target behaved as described in
-[docs/huggingface-design.md](docs/huggingface-design.md). Nothing else in this release was
-checked against a real service.
+[docs/huggingface-design.md](docs/huggingface-design.md).
+
+Also on 2026-10-27, anonymously, with no sheet and no people provider: collection from the
+organisation `huggingface` with the real client returned 6 evidence items of kind `hf-model`
+(2 requests: 1 overview and 1 listing page). The first two were drafted through the real
+guarded template drafter for a synthetic person whose company domain matched the evidence
+domain. The guard accepted both, each draft contained its evidence summary and URL, and the
+intro read "an automated search of public repositories". A sheet row built from one of them had
+11 columns and an unchanged `signal_evidence` cell. A first attempt with a person on a different
+domain was refused as `no_evidence`: the drafter's domain-match rule working as designed. No
+Hunter, Apollo or Google calls were made.
+
+Nothing else in this release was checked against a real service.
 
 ### Not checked live
 
-- `run --live` for a Hugging Face file, end to end (it has run only against fakes in the test
-  suite).
+- `run --live` for a Hugging Face file, end to end. Collection, drafting and building the sheet
+  row were each checked separately (above), but the full run, with a real sheet and a people
+  provider, was not. Whether Hunter or Apollo return people for a Hugging Face organisation's
+  domain was not checked either.
 - Hugging Face's 429 body and `Retry-After`.
 - Hugging Face tokens: none is used, and their quota and scope are unknown.
 - Redirects for renamed repositories, and user-owned repositories.

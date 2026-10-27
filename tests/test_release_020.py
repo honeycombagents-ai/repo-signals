@@ -53,6 +53,26 @@ class Release020(unittest.TestCase):
             self.assertIn(phrase, flat)
         self.assertNotIn("—", entry)
 
+    def test_changelog_records_the_evidence_to_draft_check(self):
+        text = (ROOT / "CHANGELOG.md").read_text()
+        entry = text.split(NEW, 1)[1].split("\n## ", 1)[0]
+        checked, unchecked = (" ".join(part.split()) for part in entry.split(
+            "\n### Checked live\n", 1)[1].split("\n### Not checked live\n", 1))
+        for phrase in ("Also on 2026-10-27, anonymously, with no sheet and no people provider",
+                       "returned 6 evidence items of kind `hf-model` (2 requests: 1 overview and "
+                       "1 listing page)", "The guard accepted both",
+                       "each draft contained its evidence summary and URL",
+                       "11 columns and an unchanged `signal_evidence` cell",
+                       "refused as `no_evidence`", "No Hunter, Apollo or Google calls were made."):
+            self.assertIn(phrase, checked)
+        self.assertTrue(checked.endswith("Nothing else in this release was checked against a "
+                                         "real service."))
+        self.assertIn("Collection, drafting and building the sheet row were each checked "
+                      "separately (above), but the full run, with a real sheet and a people "
+                      "provider, was not.", unchecked)
+        self.assertIn("Whether Hunter or Apollo return people for a Hugging Face organisation's "
+                      "domain was not checked either.", unchecked)
+
     def test_user_agent_carries_0_2_0(self):
         fake = gh_fx.FakeGitHub(run_fx.ORGS, run_fx.REPOS)
         client = GitHubClient(HttpClient(ALLOWED_HOSTS, transport=fake), CallBudget(1),
