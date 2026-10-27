@@ -133,8 +133,8 @@ targets continue, and the run ends as partial (exit 3).
 ## Hugging Face
 
 A signal file with `source = "huggingface"` (see [signal-file.md](signal-file.md)) goes through
-`collect --live` with the same gates, in the same order, as a GitHub file. `run --live` still
-refuses a Hugging Face file with `huggingface_not_implemented`. Requests are anonymous: no token
+`collect --live` with the same gates, in the same order, as a GitHub file. `run --live` takes it
+too (see [run.md](run.md#a-hugging-face-signal-file)). Requests are anonymous: no token
 is read or sent.
 
 ### Probe one organisation

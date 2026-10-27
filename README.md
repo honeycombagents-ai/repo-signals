@@ -12,7 +12,7 @@ What changed in each release: [CHANGELOG.md](CHANGELOG.md).
 ## What it is
 
 Repo Signals looks at the public repository activity of companies you choose. It works with
-GitHub.
+GitHub, and with Hugging Face models, datasets and Spaces.
 
 You list the target companies in a signal file, and Repo Signals finds matching public GitHub
 repositories for them. The company domains in the signal file are sent to the people provider you
@@ -46,8 +46,8 @@ same for Hugging Face: one real request, with only dry run turned off. `run` wit
 the dry run and needs neither.
 
 - **collect**: turns a signal file into GitHub or Hugging Face evidence. `collect --dry-run`
-  validates the file and prints the plan with no network call. `run --live` supports GitHub
-  signal files only, for now. See [docs/signal-file.md](docs/signal-file.md) and
+  validates the file and prints the plan with no network call. `run --live` takes either kind
+  of signal file. See [docs/signal-file.md](docs/signal-file.md) and
   [docs/live-collection.md](docs/live-collection.md).
 - **people**: looks up people through Hunter.io or Apollo.io behind a hard call budget. Both are
   dry runs by default, and live use is reachable only through the gated `run --live`. The built-in

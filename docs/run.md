@@ -1,7 +1,7 @@
 # repo-signals run
 
-`repo-signals run` runs the whole pipeline: **collect** evidence from GitHub, find **people** at
-each company, **draft** an email for each person, and append rows to the **sheet** for a person to
+`repo-signals run` runs the whole pipeline: **collect** evidence from GitHub or Hugging Face
+(see [A Hugging Face signal file](#a-hugging-face-signal-file)), find **people** at each company, **draft** an email for each person, and append rows to the **sheet** for a person to
 review. Nothing is ever sent by email. There is no sending code at all.
 
 ```sh
@@ -88,7 +88,8 @@ names only the variables or conditions that fail.
    `REPO_SIGNALS_SHEETS_MAX_CALLS of at least 6`): a token and the preflight header read, then
    the header row again, the existing rows, the header write and one append.
 9. The suppression list, if set, parses.
-10. The GitHub plan fits `REPO_SIGNALS_MAX_CALLS` and the search-rate ceiling.
+10. The plan fits its budget: for a GitHub file, `REPO_SIGNALS_MAX_CALLS` and the search-rate
+    ceiling; for a Hugging Face file, `REPO_SIGNALS_HF_MAX_CALLS` and the rate ceiling.
 11. stdin and stdout are a terminal.
 
 Gates 6 to 8 catch, before the typed "yes", sheet problems that would otherwise appear only at
@@ -105,6 +106,31 @@ long their rows are, which is not known until after the people stage, so the pla
 an exact worst case; `REPO_SIGNALS_SHEETS_MAX_CALLS` is the hard limit. You must type exactly `yes`. **There is no flag to skip the
 prompt.** The real GitHub client, the people provider and the sheet writer are built only after
 `yes`.
+
+## A Hugging Face signal file
+
+With `source = "huggingface"` in the signal file (see [signal-file.md](signal-file.md)), the run
+is the same except for the collect stage:
+
+- The gates are the same, except that gate 10 checks the Hugging Face plan against
+  `REPO_SIGNALS_HF_MAX_CALLS` (1 to 500, default 25) and the rate ceiling. No GitHub token is
+  needed: Hugging Face requests are anonymous.
+- The plan names the source and kinds and the Hugging Face budget, for example:
+
+  ```
+  source: huggingface; kinds: model, dataset, space
+  max calls: huggingface 7 of 10 (overviews and listing pages); provider at most 1 of 5; sheets 6 for the header check and one append, plus 1 per extra append as needed, at most 10; rate ceiling 400 per 300 seconds
+  ```
+
+- The sheet preflight still runs first, right after `yes` and before any Hugging Face request.
+- Collect is one organisation overview per target, then the listings for each kind, as
+  `collect --live` does it (see [live-collection.md](live-collection.md#hugging-face)). Its
+  summary says overviews and listing pages.
+- People, drafts and the sheet are unchanged. The intro template says the signal turned up "in
+  an automated search of public repositories", which is true for both sources, and the guard
+  still requires the evidence summary and URL in every draft.
+- The final line names the Hugging Face budget:
+  `requests made: huggingface 3 of 10, provider 1 of 5, sheets 5 of 10`.
 
 ## First live run checklist
 

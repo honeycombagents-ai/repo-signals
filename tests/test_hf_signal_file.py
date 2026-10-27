@@ -189,11 +189,13 @@ class Commands(run_fx.Case):
                          "needs a typed confirmation); nothing requested\n")
         self.assertEqual(out.getvalue(), "")
 
-    def test_run_live_refuses_before_any_request(self):
-        with mock.patch.object(run_mod, "GitHubClient", side_effect=AssertionError("built")):
-            code = self.live(self.hf_env())
-        self.assertEqual(code, 2, self.text)
-        self.assertIn("failing gates: huggingface_not_implemented; nothing requested", self.text)
+    def test_run_live_declined_makes_no_request(self):
+        with mock.patch.object(run_mod, "GitHubClient", side_effect=AssertionError("built")), \
+                mock.patch.object(run_mod, "HuggingFaceClient",
+                                  side_effect=AssertionError("built")):
+            code = self.live(self.hf_env(), answer="no\n")
+        self.assertEqual(code, 1, self.text)
+        self.assertIn("run: not confirmed; nothing requested", self.text)
         self.assertEqual(self.calls(), (0, 0))
         self.assertNotIn("sentinel-org", self.text)
 
@@ -206,7 +208,8 @@ class Commands(run_fx.Case):
         self.assertIn("PASS REPO_SIGNALS_SIGNAL_FILE file parses: 1 term(s), 1 target(s); "
                       "source huggingface, 3 kind(s)", text)
         self.assertIn("PASS REPO_SIGNALS_HF_MAX_CALLS not set: using the default of 25", text)
-        self.assertIn("failing gates: huggingface_not_implemented", text)
+        self.assertIn("WARN run --live is ARMED: every offline gate passes", text)
+        self.assertNotIn("huggingface_not_implemented", text)
         self.assertNotIn("sentinel-org", text)
 
     def test_doctor_github_signal_line_is_unchanged(self):

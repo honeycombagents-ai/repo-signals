@@ -11,7 +11,7 @@ from repo_signals.models import Evidence, Person
 
 ROOT = Path(__file__).resolve().parent.parent
 OLD = "I came across this public signal about"
-NEW = ("A public signal about {company_domain} turned up in an automated search of public GitHub "
+NEW = ("A public signal about {company_domain} turned up in an automated search of public "
        "repositories:")
 
 

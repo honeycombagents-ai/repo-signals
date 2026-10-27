@@ -123,7 +123,6 @@ because the preflight reads only the first row.
 | `signal_target_N_confirm_org_without_org` | Target N has `confirm_org` but no `org`. | Add the `org`, or remove `confirm_org`. |
 | `signal_target_N_hf_needs_org` | Hugging Face target N has no `org`. A domain-only target cannot be matched, because Hugging Face organisation profiles have no website field. Nothing was requested. | Add the organisation name as `org`, with `confirm_org = true`. |
 | `signal_target_N_hf_needs_confirm_org` | Hugging Face target N has an `org` but not `confirm_org = true`. Your confirmation is the only link between a company and a Hugging Face organisation. | Set `confirm_org = true` only if you know the organisation belongs to the company. |
-| `huggingface_not_implemented` | The signal file has `source = "huggingface"`, and `run --live` does not support Hugging Face yet: it refuses with nothing requested. `collect --dry-run` and `collect --live` work. | Use `collect --live` for a Hugging Face file, or a GitHub signal file for `run --live`. |
 | `signal_duplicate_domain` | Two targets have the same domain, ignoring case. | Remove the duplicate. |
 | `signal_duplicate_org` | Two targets have the same org, ignoring case. | Remove the duplicate. |
 | `missing_key` | The provider's API key variable is unset or blank. | `HUNTER_API_KEY` or `APOLLO_API_KEY`, set in this shell with `read -rs`. |

@@ -25,7 +25,6 @@ SEARCH_CEILING_GATE = "github plan within the search-rate ceiling"
 MIN_SHEETS_CALLS = 6
 SHEETS_BUDGET_GATE = f"{config.SHEETS_MAX_CALLS} of at least {MIN_SHEETS_CALLS}"
 OPENSSL_GATE = "openssl_not_found"
-HF_NOT_IMPLEMENTED_GATE = "huggingface_not_implemented"
 HF_PLAN_GATE = f"huggingface plan within {config.HF_MAX_CALLS}"
 HF_RATE_GATE = "huggingface plan within the rate ceiling"
 
@@ -63,8 +62,6 @@ def check_gates(environ, registry=None, *, signer=None, which=None) -> Gates:
     if signal is None:
         failures.append(config.SIGNAL_FILE if signal_code is None
                         else f"{config.SIGNAL_FILE} ({signal_code})")
-    elif signal.source == HUGGINGFACE:
-        failures.append(HF_NOT_IMPLEMENTED_GATE)   # run --live for Hugging Face: step 6b
 
     sender = None
     try:

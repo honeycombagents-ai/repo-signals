@@ -73,7 +73,7 @@ Subject: A public signal from acme.example.com
 
 Hi Blake,
 
-A public signal about acme.example.com turned up in an automated search of public GitHub repositories:
+A public signal about acme.example.com turned up in an automated search of public repositories:
 The org publishes a repo named widget that uses library gadget.
 Source: https://code.example.com/acme/widget
 

@@ -13,8 +13,7 @@ skip the prompt. Only after "yes" is the real client built. Results go to stdout
 is written to disk and nothing is sent anywhere else.
 
 A Hugging Face signal file goes through the same gates in the same order, with its own budget
-(REPO_SIGNALS_HF_MAX_CALLS) and plan line, anonymously (no token), then collect_hf. run --live
-still refuses a Hugging Face file (run_gates).
+(REPO_SIGNALS_HF_MAX_CALLS) and plan line, anonymously (no token), then collect_hf.
 """
 import re
 import sys

@@ -281,9 +281,9 @@ class Probe(Case):
 
 
 class Unchanged(Case):
-    def test_run_live_still_refuses_a_hugging_face_file(self):
+    def test_run_gates_no_longer_refuse_a_hugging_face_file(self):
         gates = run_gates.check_gates(self.env())
-        self.assertIn("huggingface_not_implemented", gates.failures)
+        self.assertNotIn("huggingface_not_implemented", gates.failures)
 
     def test_github_collect_live_never_builds_the_hugging_face_client(self):
         with mock.patch.object(live, "HuggingFaceClient", side_effect=AssertionError("built")):

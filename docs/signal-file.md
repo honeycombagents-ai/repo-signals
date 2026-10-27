@@ -95,8 +95,8 @@ Each target:
 `source = "huggingface"` selects the Hugging Face source (designed in
 [huggingface-design.md](huggingface-design.md)). `collect --dry-run` prints the plan, and
 `collect --live` collects anonymously after the same gates as GitHub (see
-[live-collection.md](live-collection.md#hugging-face)). `run --live` still refuses a Hugging Face
-file with `huggingface_not_implemented` and requests nothing.
+[live-collection.md](live-collection.md#hugging-face)). `run --live` runs the whole pipeline on
+it (see [run.md](run.md#a-hugging-face-signal-file)).
 
 ```toml
 source = "huggingface"

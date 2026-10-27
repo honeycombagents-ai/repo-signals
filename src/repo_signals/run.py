@@ -7,13 +7,17 @@ counts, the column layout and one sample row and draft with the email masked.
 ``run --live`` refuses (exit 2, no request) unless every gate in ``run_gates`` passes and stdin
 and stdout are a terminal. It prints the plan and requires a typed "yes"; there is no flag to
 skip that. Real clients are built only after "yes". Each service has its own CallBudget. Right
-after "yes", before any GitHub or provider call, one sheet preflight reads the header row
-through the writer's own client; a refused token, an unreadable sheet or another header ends the
-run there (exit 4). A later stage that fails or hits its cap stops; later stages work on what
-exists, and the run is partial.
+after "yes", before any GitHub, Hugging Face or provider call, one sheet preflight reads the
+header row through the writer's own client; a refused token, an unreadable sheet or another
+header ends the run there (exit 4). A later stage that fails or hits its cap stops; later stages
+work on what exists, and the run is partial.
 Rows are only ever appended, in one append per 60 KB of new rows: a person already in the sheet
 is skipped and never updated.
 Nothing is ever sent by email.
+
+For a Hugging Face signal file the collect stage is collect_hf with an anonymous
+HuggingFaceClient charged to REPO_SIGNALS_HF_MAX_CALLS; the gates, the prompt, the preflight and
+the people, draft and sheet stages are the same.
 """
 import os
 import re
@@ -27,8 +31,11 @@ from .clock import utc_today
 from .budget import BudgetExceeded, CallBudget
 from .collector.live import CONFIRM_WORD, _is_terminal
 from .collector.github_api import GitHubClient
+from .collector.hf_api import HuggingFaceClient
+from .collector.hf_orchestrate import collect_hf, summarize_hf
 from .collector.orchestrate import PARTIAL, REFUSED, collect, summarize
-from .collector.plan import SEARCH_RATE_CEILING_PER_MINUTE
+from .collector.plan import HF_RATE_CEILING_PER_WINDOW, SEARCH_RATE_CEILING_PER_MINUTE
+from .collector.signal import HUGGINGFACE
 from .config import Settings
 from .drafting.base import DraftError, Sender, sender_from_env
 from .drafting.guard import GuardedDrafter
@@ -255,7 +262,7 @@ def _dry_run(environ, out, err, run_id):
 
 
 def _live(environ, stdin, out, err, registry, github_http, provider_factory, sheets_http,
-          signer, today, clock, run_id):
+          signer, today, clock, run_id, hf_http=None):
     gates = check_gates(environ, registry, signer=signer)
     if gates.failures:
         print(f"run: refused: failing gates: {', '.join(gates.failures)}; nothing requested",
@@ -271,11 +278,21 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
     print(f"targets: {len(signal.targets)} ({plan.targets_planned} planned, "
           f"{len(plan.skipped)} skipped as suppressed)", file=out)
     print(f"terms: {len(signal.terms)}", file=out)
-    print(f"max calls: github {plan.total} of {settings.max_calls}; provider at most "
-          f"{plan.targets_planned} of {settings.provider_max_calls}; sheets "
-          f"{SHEETS_CALLS_PER_WRITE} for the header check and one append, plus 1 per extra "
-          f"append as needed, at most {settings.sheets_max_calls}; search ceiling "
-          f"{SEARCH_RATE_CEILING_PER_MINUTE} per minute (unverified)", file=out)
+    hf = signal.source == HUGGINGFACE
+    if hf:
+        print(f"source: huggingface; kinds: {', '.join(signal.kinds)}", file=out)
+        print(f"max calls: huggingface {plan.total} of {settings.hf_max_calls} (overviews and "
+              f"listing pages); provider at most {plan.targets_planned} of "
+              f"{settings.provider_max_calls}; sheets {SHEETS_CALLS_PER_WRITE} for the header "
+              f"check and one append, plus 1 per extra append as needed, at most "
+              f"{settings.sheets_max_calls}; rate ceiling {HF_RATE_CEILING_PER_WINDOW} per 300 "
+              "seconds", file=out)
+    else:
+        print(f"max calls: github {plan.total} of {settings.max_calls}; provider at most "
+              f"{plan.targets_planned} of {settings.provider_max_calls}; sheets "
+              f"{SHEETS_CALLS_PER_WRITE} for the header check and one append, plus 1 per extra "
+              f"append as needed, at most {settings.sheets_max_calls}; search ceiling "
+              f"{SEARCH_RATE_CEILING_PER_MINUTE} per minute (unverified)", file=out)
     print(f"provider: {settings.provider}", file=out)
     if settings.provider == "hunter" and signal.titles:
         print(HUNTER_TITLES_WARNING, file=out)
@@ -291,7 +308,10 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
         print("run: not confirmed; nothing requested", file=err)
         return EXIT_DECLINED
 
-    github_budget = CallBudget(settings.max_calls)
+    # The collect stage's own budget: Hugging Face or GitHub, named in every requests line.
+    collect_label, collect_cap = (("huggingface", settings.hf_max_calls) if hf
+                                  else ("github", settings.max_calls))
+    collect_budget = CallBudget(collect_cap)
     provider_budget = CallBudget(settings.provider_max_calls)
     sheets_budget = CallBudget(settings.sheets_max_calls)
     partial, refused = [], None
@@ -305,17 +325,23 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
     except ProviderError as e:
         print(f"sheet preflight: refused ({e.code}); nothing collected, no people looked up",
               file=out)
-        print(f"requests made: github 0 of {settings.max_calls}, provider 0 of "
+        print(f"requests made: {collect_label} 0 of {collect_cap}, provider 0 of "
               f"{settings.provider_max_calls}, sheets {sheets_budget.used} of "
               f"{settings.sheets_max_calls}", file=out)
         print(f"run: refused (sheet preflight: {e.code})", file=out)
         return EXIT_REFUSED_BY_STAGE
     print(f"sheet preflight: ok ({found})", file=out)
 
-    client = GitHubClient(github_http, github_budget, settings.github_token, dry_run=False)
-    result = collect(signal, client, gates.suppression, settings.max_calls,
-                     today if today is not None else utc_today())
-    for line in summarize(result):
+    today = today if today is not None else utc_today()
+    if hf:
+        client = HuggingFaceClient(hf_http, collect_budget, dry_run=False)   # anonymous
+        result = collect_hf(signal, client, gates.suppression, today, budget_cap=collect_cap)
+        summary = summarize_hf(result, signal.kinds)
+    else:
+        client = GitHubClient(github_http, collect_budget, settings.github_token, dry_run=False)
+        result = collect(signal, client, gates.suppression, settings.max_calls, today)
+        summary = summarize(result)
+    for line in summary:
         print(line, file=out)
     for domain, items in result.evidence_by_domain.items():
         for evidence in items:
@@ -359,7 +385,7 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
             else:
                 print(f"sheet: not written ({e.code})", file=out)
 
-    print(f"requests made: github {github_budget.used} of {settings.max_calls}, provider "
+    print(f"requests made: {collect_label} {collect_budget.used} of {collect_cap}, provider "
           f"{provider_budget.used} of {settings.provider_max_calls}, sheets "
           f"{sheets_budget.used} of {settings.sheets_max_calls}", file=out)
     if refused is not None:
@@ -374,7 +400,7 @@ def _live(environ, stdin, out, err, registry, github_http, provider_factory, she
 
 def run(live=False, environ=None, stdin=None, out=None, err=None, *, registry=None,
         github_http=None, provider_factory=None, sheets_http=None, signer=None, today=None,
-        clock=None, run_id=None) -> int:
+        clock=None, run_id=None, hf_http=None) -> int:
     """The ``repo-signals run`` command. The keyword arguments are test seams."""
     environ = os.environ if environ is None else environ
     stdin = stdin if stdin is not None else sys.stdin
@@ -385,4 +411,4 @@ def run(live=False, environ=None, stdin=None, out=None, err=None, *, registry=No
     if not live:
         return _dry_run(environ, out, err, run_id)
     return _live(environ, stdin, out, err, registry, github_http, provider_factory, sheets_http,
-                 signer, today, clock, run_id)
+                 signer, today, clock, run_id, hf_http)

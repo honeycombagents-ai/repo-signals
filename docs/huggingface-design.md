@@ -1,6 +1,6 @@
 # Design: a Hugging Face source for the collector
 
-Status: **build steps 1 to 5 of 7 built, and step 6a (collect only)** (section 12): the signal file's `source` key, the
+Status: **all 7 build steps built** (section 12): the signal file's `source` key, the
 Hugging Face target rules, the request plan, `REPO_SIGNALS_HF_MAX_CALLS` and `collect --dry-run`
 (step 1); the evidence filters and templates as pure functions (step 2, `collector/hf_fields.py`
 and `collector/hf_evidence.py`); the client behind a fake transport (step 3,
@@ -12,10 +12,12 @@ clients (step 5, `collector/hf_orchestrate.py`: matching, then each matched targ
 the signal's kind order, skipping kinds with a zero count, into Evidence, with the GitHub
 collector's result and report types; `unauthorised`, `rate_limited`, `budget_exhausted`,
 `server_error` and `unexpected_shape` stop the run as partial and `listing_capped` marks it
-partial); and step 6a, the live switch for `collect` only (`collect --live` for a Hugging Face
-file behind the same gates as GitHub, anonymously, with `REPO_SIGNALS_HF_MAX_CALLS`, plus the
-one-request `hf-probe-org`; see [live-collection.md](live-collection.md)). `run --live` still
-refuses a Hugging Face file with `huggingface_not_implemented` (step 6b).
+partial); step 6a, the live switch for `collect` (`collect --live` for a Hugging Face file
+behind the same gates as GitHub, anonymously, with `REPO_SIGNALS_HF_MAX_CALLS`, plus the
+one-request `hf-probe-org`; see [live-collection.md](live-collection.md)); and step 6b,
+`run --live` for a Hugging Face file (the sheet preflight, `collect_hf`, people, drafts and the
+sheet, with every gate and budget unchanged and no GitHub token needed; see [run.md](run.md)).
+The intro template is source-neutral ("an automated search of public repositories").
 This page describes how Repo Signals gains a second collector source, Hugging Face, inside this
 repository. The GitHub collector
 ([collector-design.md](collector-design.md)) keeps working unchanged: `source` defaults to
@@ -270,8 +272,8 @@ Still unchecked, so check each of these before relying on it:
 4. **The window key:** `modified_within_days` for Hugging Face, or one neutral key for both sources?
 5. **isVerified false:** include a confirmed but unverified organisation (the default above), or
    require verified?
-6. **The draft wording:** the intro template says "public GitHub repositories". Hugging Face
-   evidence needs neutral wording. That is a template text change only; the drafter and the
+6. **The draft wording (decided):** the intro template now says "an automated search of public
+   repositories", true for both sources. It was a template text change only; the drafter and the
    guard stay as they are.
 7. **Terms of use:** confirm Hugging Face's terms allow this automated access and the outreach use
    before the first live run.

@@ -223,6 +223,35 @@ the block above; the target is the last table in the file, so this adds it there
 printf '%s\n' "confirm_org = true" >> "$CONFIG_DIR/first-run.toml"
 ```
 
+To collect from Hugging Face instead, write a Hugging Face signal file. There is no website to
+check on Hugging Face, so the target must name the organisation and set `confirm_org = true`
+itself; set it only for an organisation you know belongs to the company. `kinds` picks models,
+datasets and Spaces (all three if left out):
+
+```sh
+read -r "TARGET_DOMAIN?Company domain: "
+read -r "TARGET_ORG?Hugging Face organisation name (the NAME in huggingface.co/NAME): "
+read -r "SEARCH_TERM?Search term: "
+read -r "JOB_TITLE?Job title: "
+cat > "$CONFIG_DIR/first-run-hf.toml" <<EOF
+source = "huggingface"
+name = "first-run-hf"
+terms = ["$SEARCH_TERM"]
+titles = ["$JOB_TITLE"]
+kinds = ["model", "dataset", "space"]
+
+[[targets]]
+domain = "$TARGET_DOMAIN"
+org = "$TARGET_ORG"
+confirm_org = true
+EOF
+chmod 600 "$CONFIG_DIR/first-run-hf.toml"
+export REPO_SIGNALS_SIGNAL_FILE="$CONFIG_DIR/first-run-hf.toml"
+```
+
+`repo-signals hf-probe-org` checks the organisation name with one request first (see
+[live-collection.md](live-collection.md#hugging-face)). No GitHub token is needed for this file.
+
 The rules for every field are in [signal-file.md](signal-file.md). Pick the title with your
 provider in mind. Hunter matches it as a case-insensitive substring of each position, so `CTO`
 will not match "Chief Technology Officer": use the words that appear in the positions. With
