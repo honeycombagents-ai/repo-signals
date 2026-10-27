@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.2.0 (2026-10-27)
+
+A second collector source: public Hugging Face models, datasets and Spaces owned by an
+organisation you name. Nothing is ever sent by email, and dry run is still the default. A signal
+file without `source` is a GitHub file and behaves as before.
+
+- **Hugging Face signal files.** A new optional `source` key (`"github"`, the default, or
+  `"huggingface"`). A Hugging Face target needs both `org` and `confirm_org = true`, because an
+  organisation profile has no website to check. `kinds` picks models, datasets and Spaces (all
+  three by default) and `modified_within_days` (1 to 3650, default 365) is the window on the last
+  modified date. See [docs/signal-file.md](docs/signal-file.md) and
+  [docs/huggingface-design.md](docs/huggingface-design.md).
+- **`REPO_SIGNALS_HF_MAX_CALLS`** (1 to 500, default 25) caps Hugging Face requests. The plan
+  counts 1 overview plus at most 2 listing pages per kind per target and is refused before any
+  request if it does not fit this budget or the rate ceiling (400 per 300-second window).
+- **`collect --live` for a Hugging Face file**, behind the same gates as GitHub (dry run off, a
+  terminal and a typed "yes"). Requests are anonymous. Only allowlisted fields are read (never a
+  bio, card or description); items must be owned by the organisation, public, not gated or
+  disabled, recently modified and have the term in their name. Evidence names the model, dataset
+  or Space and links to it under huggingface.co. A listing that still had pages after the cap is
+  reported as `listing_capped` and the run is partial.
+- **`hf-probe-org`**, one Hugging Face request for one organisation overview, with dry run off and
+  no terminal or typed "yes" (like `probe-org`). It prints only whether the organisation is
+  verified, its three counts and the outcome.
+- **`run --live` for a Hugging Face file**: the sheet preflight, then collection from Hugging Face,
+  then people, drafts and the sheet, with every gate and budget as before. No GitHub token is
+  needed for a Hugging Face file. The plan and the requests lines name Hugging Face instead of
+  GitHub.
+- **The intro template is source-neutral.** It now says the signal turned up "in an automated
+  search of public repositories" instead of "public GitHub repositories". This changes GitHub
+  drafts too.
+- **The failing-gates line names the signal-file code.** When the signal file does not load,
+  `run --live` and `doctor` now show `REPO_SIGNALS_SIGNAL_FILE (CODE)`, for example
+  `signal_target_1_bad_org`, instead of the bare variable name. An unset variable is still named
+  alone.
+- **Setup guide fixes from a cold run:** a dragged-in key path with a leading `~` now works, the
+  sheets budget numbers for a first and second run are explained, the organisation prompt says it
+  wants the `NAME` in github.com/NAME and not a domain, `confirm_org = true` is explained, and a
+  first run that writes nothing is described as not an error. The guide also has a Hugging Face
+  variant of the signal-file step.
+- **New troubleshooting rows** for the Hugging Face codes a user can now see, including
+  `org_not_found`, `unauthorised`, `bad_link`, `listing_capped` and `client_error`.
+
+### Checked live
+
+On 2026-10-27, anonymously, against the organisation `huggingface`: `hf-probe-org`, and
+`collect --live` listing models, datasets and Spaces. The overview fields, the listings with the
+per-kind expand list (Spaces refuse `gated` in it), the record fields, the evidence wording and
+links, and the cap of 10 items per target behaved as described in
+[docs/huggingface-design.md](docs/huggingface-design.md). Nothing else in this release was
+checked against a real service.
+
+### Not checked live
+
+- `run --live` for a Hugging Face file, end to end (it has run only against fakes in the test
+  suite).
+- Hugging Face's 429 body and `Retry-After`.
+- Hugging Face tokens: none is used, and their quota and scope are unknown.
+- Redirects for renamed repositories, and user-owned repositories.
+- Organisation names with unusual characters (underscores, dots, or a leading digit).
+- Splitting a sheet write into several appends against a real sheet.
+- Hugging Face's terms for automated access and for outreach use. Read them before a live run.
+
 ## 0.1.1 (2026-10-23)
 
 Fixes from a review of 0.1.0. Nothing is ever sent by email, and dry run is still the default.

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import _src  # noqa: F401
 import test_collector_live as gh_fx
+import test_release as release
 import test_run as run_fx
 from repo_signals import __version__
 from repo_signals.budget import CallBudget
@@ -19,7 +20,7 @@ class Release011(unittest.TestCase):
         with open(ROOT / "pyproject.toml", "rb") as fh:
             version = tomllib.load(fh)["project"]["version"]
         self.assertEqual(version, __version__)
-        self.assertEqual(__version__, "0.1.1")
+        self.assertEqual(__version__, release.CURRENT)
 
     def test_changelog_has_0_1_1_above_0_1_0(self):
         text = (ROOT / "CHANGELOG.md").read_text()
@@ -39,7 +40,7 @@ class Release011(unittest.TestCase):
                               dry_run=False)
         client.get_org("example-org")
         self.assertEqual(fake.calls[0]["headers"]["User-Agent"],
-                         "repo-signals/0.1.1 (+https://honeycombagents.ai)")
+                         f"repo-signals/{release.CURRENT} (+https://honeycombagents.ai)")
 
 
 if __name__ == "__main__":
