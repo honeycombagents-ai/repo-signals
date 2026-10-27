@@ -53,7 +53,7 @@ VARIABLE_NOTES = {
     config.SHEETS_MAX_CALLS: "Google Sheets call budget, 1 to 500",
     config.HF_MAX_CALLS: "Hugging Face call budget, 1 to 500 (planned; no client yet)",
     config.SHEET_ID: "the Google Sheet id",
-    config.GITHUB_TOKEN: "secret, optional: set it with read -rs",
+    config.GITHUB_TOKEN: "secret, optional, for GitHub signal files only: set it with read -rs",
     config.GOOGLE_CREDENTIALS: "path to the service-account key file, kept outside any repository",
     config.SUPPRESSION_FILE: "path to suppression.txt",
     config.SIGNAL_FILE: "path to signal.toml",

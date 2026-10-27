@@ -17,7 +17,7 @@ import sys
 from . import config
 from .budget import HARD_MAX_CALLS
 from .providers.registry import UnknownProviderError, default_registry, planned_note
-from .collector.signal import SignalError, load_signal
+from .collector.signal import HUGGINGFACE, SignalError, load_signal
 from .drafting.base import DraftError
 from .drafting.suppression import load_suppression
 from .drafting.template import BUILTIN_TEMPLATES, load_template
@@ -126,6 +126,30 @@ def check_optional(environ, var, parse, missing_hint):
     if _is_set(environ, var):
         return [(PASS, f"{var} is set")]
     return [(WARN, f"{var} is missing ({missing_hint})")]
+
+
+def _signal_source(environ):
+    """The signal file's source, or None when it is not set or does not load (its own check
+    reports that)."""
+    try:
+        path = config.parse_signal_file(environ)
+        return load_signal(path).source if path is not None else None
+    except (config.ConfigError, SignalError):
+        return None
+
+
+def check_github_token(environ):
+    """The GitHub token line. A Hugging Face signal file is collected anonymously, so it gets no
+    line about the token, set or not; a malformed token still FAILs, as it would stop any live
+    command. Every other case (no signal file, a GitHub file, an unusable file) is unchanged."""
+    try:
+        config.parse_github_token(environ)
+    except config.ConfigError as e:
+        return [(FAIL, str(e))]
+    if _signal_source(environ) == HUGGINGFACE:
+        return []
+    return check_optional(environ, config.GITHUB_TOKEN, config.parse_github_token,
+                          "needed before GitHub signals can be collected")
 
 
 def check_google_credentials(environ):
@@ -268,8 +292,7 @@ def run_checks(environ, registry, settings=None, version_info=None, which=None):
         *check_live_armed(environ, settings),
         *check_optional(environ, config.SHEET_ID, config.parse_sheet_id,
                         "needed before results can be written to a Sheet"),
-        *check_optional(environ, config.GITHUB_TOKEN, config.parse_github_token,
-                        "needed before GitHub signals can be collected"),
+        *check_github_token(environ),
         *check_google_credentials(environ),
         *check_openssl(which),
         *check_sender(environ),
