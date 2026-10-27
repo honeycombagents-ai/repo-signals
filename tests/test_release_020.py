@@ -7,6 +7,7 @@ from pathlib import Path
 import _src  # noqa: F401
 import test_collector_live as gh_fx
 import test_hf_live as hf_fx
+import test_release as release
 import test_run as run_fx
 from repo_signals import __version__
 from repo_signals.budget import CallBudget
@@ -17,21 +18,21 @@ from repo_signals.http import HttpClient
 
 ROOT = Path(__file__).resolve().parent.parent
 NEW, OLD = "\n## 0.2.0 (2026-10-27)\n", "\n## 0.1.1 (2026-10-23)\n"
-AGENT = "repo-signals/0.2.0 (+https://honeycombagents.ai)"
+AGENT = f"repo-signals/{release.CURRENT} (+https://honeycombagents.ai)"
 
 
 class Release020(unittest.TestCase):
     def test_pyproject_and_package_are_0_2_0(self):
         with open(ROOT / "pyproject.toml", "rb") as fh:
             version = tomllib.load(fh)["project"]["version"]
-        self.assertEqual(version, "0.2.0")
-        self.assertEqual(__version__, "0.2.0")
+        self.assertEqual(version, release.CURRENT)
+        self.assertEqual(__version__, release.CURRENT)
 
     def test_changelog_has_0_2_0_above_0_1_1(self):
         text = (ROOT / "CHANGELOG.md").read_text()
         self.assertIn(NEW, text)
         self.assertLess(text.index(NEW), text.index(OLD))
-        self.assertEqual(text.count("\n## "), 3)
+        self.assertEqual(text.count(NEW), 1)
         entry = text.split(NEW, 1)[1].split("\n## ", 1)[0]
         checked = entry.split("\n### Checked live\n", 1)[1].split("\n### Not checked live\n", 1)
         self.assertEqual(len(checked), 2)

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "repo-signals"
-version = "0.2.0"
+version = "0.2.1"
 description = "Finds companies by their public repository activity and drafts evidence-grounded emails for a human to send."
 readme = "README.md"
 license = "Apache-2.0"

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.1 (2026-10-27)
+
+A small fix to `doctor`. Nothing is ever sent by email, and dry run is still the default.
+
+- **`doctor` no longer asks for a GitHub token for a Hugging Face signal file.** A Hugging Face
+  file is collected anonymously, so `doctor` no longer warns that `REPO_SIGNALS_GITHUB_TOKEN` is
+  missing when the signal file has `source = "huggingface"`. A malformed token still fails. With
+  no signal file, a GitHub file or an unusable file, the line is as before. The `env.example`
+  note written by `init` now says the token is optional and for GitHub signal files only.
+
+### Not checked live
+
+Nothing in this release was checked against a real service. The full `run --live` for a Hugging
+Face file against a real sheet, and Hunter or Apollo returning people for a Hugging Face
+organisation's domain, are still unchecked.
+
 ## 0.2.0 (2026-10-27)
 
 A second collector source: public Hugging Face models, datasets and Spaces owned by an
