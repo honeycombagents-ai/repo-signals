@@ -19,7 +19,7 @@ from repo_signals.http import HttpClient
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION = "0.1.0"
-CURRENT = "0.2.1"
+CURRENT = "0.2.2"
 
 
 class Version(unittest.TestCase):

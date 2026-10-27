@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.2 (2026-10-27)
+
+A documentation release, and the first full live run for a Hugging Face file. Nothing is ever
+sent by email, and dry run is still the default.
+
+- **A "Hugging Face use" note in the README.** The Hugging Face source reads only public listing
+  data, anonymously, within Hugging Face's published anonymous rate limit; it reads no free text
+  and sends nothing. Following Hugging Face's terms, and the legality of your own outreach, are
+  your responsibility.
+
+### Checked live
+
+On 2026-10-27, one full `run --live` for a Hugging Face file, against the organisation
+`huggingface`, models only, one listing page (2 requests: 1 overview and 1 listing page), with
+Hunter as the people provider (3 people found for the `huggingface.co` domain) and a real sheet
+(the sheet preflight passed on an empty sheet, and 3 rows were appended). Budgets used:
+huggingface 2 of 5, provider 1 of 1, sheets 6 of 6. The run ended complete, with nothing sent.
+
+### Not checked live
+
+- The duplicate skip on a real sheet with Hugging Face evidence (the run was not repeated).
+- Apollo as the people provider for a Hugging Face file.
+- Datasets and Spaces through `run --live` (they were checked through `collect --live` only).
+- Hugging Face's 429 body and `Retry-After`.
+- Hugging Face tokens.
+- Redirects for renamed repositories, and user-owned repositories.
+- Organisation names with unusual characters.
+- Splitting a sheet write into several appends against a real sheet.
+
 ## 0.2.1 (2026-10-27)
 
 A small fix to `doctor`. Nothing is ever sent by email, and dry run is still the default.
