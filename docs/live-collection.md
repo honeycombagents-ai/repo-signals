@@ -1,8 +1,10 @@
 # Live collection
 
 Two commands make real GitHub requests: `repo-signals probe-org` (exactly one request) and
-`repo-signals collect --live` (the planned requests, after you type "yes"). Both refuse to run,
-making no request, unless dry run is off:
+`repo-signals collect --live` (the planned requests, after you type "yes"). For a Hugging Face
+signal file, `collect --live` makes Hugging Face requests instead, and `repo-signals hf-probe-org`
+is the one-request check (see [Hugging Face](#hugging-face)). All of them refuse to run, making no
+request, unless dry run is off:
 
 ```sh
 export REPO_SIGNALS_DRY_RUN=false     # exactly "false"; unset or "true" keeps dry run on
@@ -127,6 +129,88 @@ targets continue, and the run ends as partial (exit 3).
 - Nothing is sent anywhere except the GitHub API host, and only the planned read-only requests.
 - The token is never printed or stored.
 - No retry, no sleep: a rate limit stops the run.
+
+## Hugging Face
+
+A signal file with `source = "huggingface"` (see [signal-file.md](signal-file.md)) goes through
+`collect --live` with the same gates, in the same order, as a GitHub file. `run --live` still
+refuses a Hugging Face file with `huggingface_not_implemented`. Requests are anonymous: no token
+is read or sent.
+
+### Probe one organisation
+
+```sh
+repo-signals hf-probe-org example-org
+```
+
+This makes **exactly one** request, the organisation overview, with a call budget of 1. It needs
+dry run off, and no terminal or typed "yes", like `probe-org`. It prints only:
+
+```
+hf-probe-org: login shape ok
+is_verified: yes
+models: 3
+datasets: 0
+spaces: 2
+outcome: ok
+```
+
+It never prints the organisation's bio or any other text. It refuses with no request if dry run
+is on or the name is not a valid organisation name shape. Exit codes: 0 for `ok`, 1 if the
+request failed (the outcome line gives the code, for example `org_not_found`, `rate_limited` or
+`unauthorised`), and 2 if it refused.
+
+### collect --live for a Hugging Face file
+
+```sh
+export REPO_SIGNALS_HF_MAX_CALLS=7
+repo-signals collect --dry-run
+repo-signals collect --live
+```
+
+It refuses, with exit code 2 and no request, unless dry run is off, the signal file parses, the
+suppression list (if set) parses, the plan fits `REPO_SIGNALS_HF_MAX_CALLS` and the rate ceiling,
+and stdin and stdout are a terminal. It then prints the plan and asks for exactly `yes`:
+
+```
+signal: examplelib-hf
+targets: 1 (1 planned, 0 skipped as suppressed)
+terms: 1
+source: huggingface; kinds: model, dataset, space
+planned requests: at most 7 (1 overview per target, at most 2 listing pages per kind); budget 7 (REPO_SIGNALS_HF_MAX_CALLS); rate ceiling 400 per 300 seconds
+Type "yes" to make these Hugging Face requests:
+```
+
+The Hugging Face client is built only after you type `yes`. Then it prints the run summary and
+each Evidence item:
+
+```
+collect: complete
+planned requests: 7; requests made: 3 (overviews 1, listing pages 2)
+matching: matched 1
+example.com -> example-org (huggingface, confirmed, verified)
+evidence: example.com: 1
+kept: 1
+dropped 1: term_not_in_name
+evidence for example.com:
+  summary: The public Hugging Face model example-org/examplelib-7b matches the term examplelib, last modified on 2026-10-20.
+  url: <the model link>
+```
+
+A kind whose overview count is zero is not listed (the datasets above). A listing that failed,
+was not attempted or was capped shows as `listing incomplete: example.com dataset: <code>`, and
+the run ends as partial (exit 3). `unauthorised`, `rate_limited`, `budget_exhausted`,
+`server_error` and `unexpected_shape` stop the run; what was collected is printed. The exit codes
+are the ones in [Exit codes](#exit-codes).
+
+It never:
+
+- reads, prints or stores an organisation bio, a model or dataset card, a description or any
+  other free text;
+- lists a target whose organisation was not found, or one that is suppressed;
+- follows a redirect or the URL in a `Link` header (only its cursor is read);
+- retries or sleeps: a rate limit stops the run;
+- writes anything to disk or sends anything anywhere except the Hugging Face API host.
 
 ## Verify against GitHub's current documentation
 

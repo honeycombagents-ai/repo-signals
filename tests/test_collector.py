@@ -512,7 +512,7 @@ class NoNetwork(unittest.TestCase):
         # github_api.py and hf_api.py are the collector modules allowed to use http.HttpClient;
         # each is tested on its own (test_collector_client.py, test_hf_client.py). github_api.py
         # is reached from the CLI only through the gated probe-org, collect --live and run --live;
-        # hf_api.py is not reachable from the CLI yet.
+        # hf_api.py only through the gated hf-probe-org and collect --live.
         # live.py is the CLI's live path: it builds the client after a typed confirmation and is
         # tested on its own (test_collector_live.py).
         files = [f for f in files if f.name not in ("github_api.py", "hf_api.py", "live.py")]

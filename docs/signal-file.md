@@ -93,9 +93,10 @@ Each target:
 ## Hugging Face signal files
 
 `source = "huggingface"` selects the Hugging Face source (designed in
-[huggingface-design.md](huggingface-design.md)). Only the signal file, the request plan and
-`collect --dry-run` exist so far: `collect --live` and `run --live` refuse a Hugging Face file with
-`huggingface_not_implemented` and request nothing.
+[huggingface-design.md](huggingface-design.md)). `collect --dry-run` prints the plan, and
+`collect --live` collects anonymously after the same gates as GitHub (see
+[live-collection.md](live-collection.md#hugging-face)). `run --live` still refuses a Hugging Face
+file with `huggingface_not_implemented` and requests nothing.
 
 ```toml
 source = "huggingface"

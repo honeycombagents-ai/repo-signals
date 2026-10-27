@@ -64,7 +64,7 @@ def check_gates(environ, registry=None, *, signer=None, which=None) -> Gates:
         failures.append(config.SIGNAL_FILE if signal_code is None
                         else f"{config.SIGNAL_FILE} ({signal_code})")
     elif signal.source == HUGGINGFACE:
-        failures.append(HF_NOT_IMPLEMENTED_GATE)   # no Hugging Face client exists yet
+        failures.append(HF_NOT_IMPLEMENTED_GATE)   # run --live for Hugging Face: step 6b
 
     sender = None
     try:

@@ -53,6 +53,8 @@ from .signal import _LOGIN_RE
 # - /api/spaces returns 400 when expand includes gated; with author, lastModified, private and
 #   disabled it returns 200 and no gated key. Hence EXPAND_BY_KIND.
 # - private and disabled were false on every record seen.
+# Also seen live, in the earlier probe of the cursor: the Link header's cursor was 344 characters,
+# all in the allowed set, so the cursor limit is 1024 characters (it was 512).
 # Still unchecked: the 429 body and Retry-After; gated and private behaviour; the token quota and
 # scope; redirects for renamed repositories; user-owned repositories; the exact search
 # tokenisation; whether a short page (fewer records than the limit) can carry a next cursor;
@@ -90,7 +92,7 @@ REQUEST_TIMEOUT_SECONDS = 15.0
 MAX_PAGE_SIZE = 500               # the client never asks for more (the API caps at 1,000)
 MAX_PAGES = 2                     # pages per listing, as in the request plan
 LISTING_CAPPED = "listing_capped"
-_CURSOR_RE = re.compile(r"[A-Za-z0-9_.=+/-]{1,512}")
+_CURSOR_RE = re.compile(r"[A-Za-z0-9_.=+/-]{1,1024}")   # cursors seen live: 344 characters
 _LINK_PART_RE = re.compile(r'<([^<>\s]{1,2048})>\s*;\s*rel="?([a-z]+)"?')
 _REL_NEXT_RE = re.compile(r'rel="?next"?')
 _RATE_R_RE = re.compile(r"(?:^|;)\s*r=([0-9]{1,9})\s*(?:;|$)")
@@ -144,7 +146,7 @@ def next_cursor(headers, path):
     """The opaque cursor from a ``Link: <...>; rel="next"`` header, or None when there is none.
 
     The URL in the header is only parsed, never followed: it must be on the Hugging Face host and
-    the same path, carry exactly one cursor of safe characters (at most 512), and nothing else
+    the same path, carry exactly one cursor of safe characters (at most 1024), and nothing else
     suspicious; otherwise ProviderError("bad_link").
     """
     value = (headers or {}).get(HEADER_LINK)

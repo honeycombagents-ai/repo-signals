@@ -34,10 +34,11 @@ import re
 from typing import Protocol
 
 from ..budget import HARD_MAX_CALLS
-from .filters import FilterReport
+from .filters import FilterReport, summarize_report
 from .hf_evidence import hf_evidence_for_target
 from .hf_matching import match_hf_targets
-from .orchestrate import COMPLETE, PARTIAL, CollectResult, RunReport, SkippedSearch, _refused
+from .orchestrate import (COMPLETE, PARTIAL, REFUSED, CollectResult, RunReport, SkippedSearch,
+                          _refused)
 from .plan import HF_PAGES_PER_LISTING, PlanError, build_plan
 from .signal import HUGGINGFACE, Signal
 
@@ -156,3 +157,29 @@ def collect_hf(signal, client, suppression, today, *, budget_cap=HARD_MAX_CALLS)
     run = RunReport(status, stop, None, plan.total, plan.skipped, counting.pages, tuple(skipped),
                     counting.overviews)
     return CollectResult(evidence, match_report, filter_report, run)
+
+
+def summarize_hf(result, kinds) -> list[str]:
+    """Code-only lines for a Hugging Face run, in Hugging Face terms (overviews and listing
+    pages): status, counts, match lines, evidence counts, drop codes and incomplete listings.
+    ``kinds`` is the signal's kinds, to name each listing by its kind."""
+    run = result.run_report
+    if run.status == REFUSED:
+        return [f"collect: refused: {run.refusal}; nothing requested"]
+    head = "collect: complete" if run.status == COMPLETE else \
+        f"collect: partial ({run.code})" if run.code else "collect: partial"
+    lines = [head, f"planned requests: {run.planned_requests}; requests made: "
+                   f"{run.requests_made} (overviews {run.matching_requests}, listing pages "
+                   f"{run.searches_made})"]
+    if run.suppressed:
+        lines.append(f"skipped (suppressed): {', '.join(run.suppressed)}")
+    counts = result.match_report.counts
+    lines.append("matching: " + ", ".join(f"{status} {n}" for status, n in sorted(counts.items())))
+    lines += list(result.match_report.lines)
+    for domain, items in result.evidence_by_domain.items():
+        lines.append(f"evidence: {domain}: {len(items)}")
+    lines += summarize_report(result.filter_report)
+    for s in run.skipped_searches:
+        kind = kinds[s.term_number - 1] if 1 <= s.term_number <= len(kinds) else "unknown"
+        lines.append(f"listing incomplete: {s.domain} {kind}: {s.code}")
+    return lines

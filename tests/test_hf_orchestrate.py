@@ -364,9 +364,10 @@ class NotWired(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(TypeError):
                 collect_hf(bad, FakeClient(), None, TODAY)
 
-    def test_no_command_reaches_it(self):
+    def test_only_the_gated_live_path_reaches_it(self):
+        # live.py is collect --live: reached only after its gates and a typed "yes".
         for path in sorted((ROOT / "src/repo_signals").rglob("*.py")):
-            if path.name != "hf_orchestrate.py":
+            if path.name not in ("hf_orchestrate.py", "live.py"):
                 with self.subTest(path=path.name):
                     self.assertNotIn("hf_orchestrate", path.read_text())
         code = ("import sys; sys.path.insert(0, sys.argv[1]); import repo_signals.cli;"

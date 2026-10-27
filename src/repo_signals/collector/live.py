@@ -1,13 +1,20 @@
-"""The live switch: ``repo-signals probe-org <login>`` and ``repo-signals collect --live``.
+"""The live switch: ``repo-signals probe-org <login>``, ``repo-signals hf-probe-org <org>`` and
+``repo-signals collect --live``.
 
 probe-org makes exactly ONE GitHub request (an org lookup) so the unverified API details can be
 checked before any collection. It prints only code-only fields, never the website text.
+hf-probe-org does the same for Hugging Face: one organisation overview, charged to a budget of 1,
+printing only isVerified and the three counts, never the bio.
 
 collect --live refuses, with no request, unless dry run is off, the signal file is set and
 parses, the plan fits the budget and the search-rate ceiling, and stdin and stdout are a
 terminal. It then prints the plan and asks the user to type exactly "yes". There is no flag to
 skip the prompt. Only after "yes" is the real client built. Results go to stdout only: nothing
 is written to disk and nothing is sent anywhere else.
+
+A Hugging Face signal file goes through the same gates in the same order, with its own budget
+(REPO_SIGNALS_HF_MAX_CALLS) and plan line, anonymously (no token), then collect_hf. run --live
+still refuses a Hugging Face file (run_gates).
 """
 import re
 import sys
@@ -19,12 +26,14 @@ from ..drafting.base import DraftError
 from ..drafting.suppression import suppression_from_env
 from ..providers.base import ProviderError
 from .github_api import GitHubClient
+from .hf_api import HuggingFaceClient
+from .hf_orchestrate import collect_hf, summarize_hf
 from .orchestrate import COMPLETE, PARTIAL, REFUSED, collect, summarize
-from .plan import SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan
+from .plan import (HF_PAGES_PER_LISTING, HF_RATE_CEILING_PER_WINDOW,
+                   SEARCH_RATE_CEILING_PER_MINUTE, PlanError, build_plan)
 from .signal import HUGGINGFACE, SignalError, _LOGIN_RE, signal_from_env
 
 CONFIRM_WORD = "yes"
-HF_NOT_IMPLEMENTED = "huggingface_not_implemented"   # no Hugging Face client exists yet
 EXIT_CODES = {COMPLETE: 0, PARTIAL: 3, REFUSED: 4}
 EXIT_NOT_CONFIRMED = 1
 EXIT_REFUSED_BEFORE_START = 2
@@ -78,6 +87,34 @@ def run_probe(login, environ, out=None, err=None, http=None) -> int:
     return 0 if outcome == "ok" else 1
 
 
+def run_hf_probe(org, environ, out=None, err=None, http=None) -> int:
+    """One Hugging Face organisation overview, code-only output. Exit 0 ok, 1 on a request
+    error, 2 if refused. Gated like probe-org: dry run off, no terminal or typed "yes"."""
+    out = out if out is not None else sys.stdout
+    err = err if err is not None else sys.stderr
+    if not isinstance(org, str) or not _LOGIN_RE.fullmatch(org):
+        print("hf-probe-org: refused: the name is not a valid organisation name shape; nothing "
+              "requested", file=err)
+        return EXIT_REFUSED_BEFORE_START
+    settings, _ = _settings_and_token(environ, "hf-probe-org", err)
+    if settings is None:
+        return EXIT_REFUSED_BEFORE_START
+    client = HuggingFaceClient(http, CallBudget(1), dry_run=False)
+    outcome, overview = "ok", None
+    try:
+        overview = client.get_org_overview(org)
+    except ProviderError as e:
+        outcome = e.code
+    print("hf-probe-org: login shape ok", file=out)
+    if overview is not None:   # only the allowlisted Overview fields: never the bio
+        print(f"is_verified: {'yes' if overview.is_verified else 'no'}", file=out)
+        print(f"models: {overview.models}", file=out)
+        print(f"datasets: {overview.datasets}", file=out)
+        print(f"spaces: {overview.spaces}", file=out)
+    print(f"outcome: {outcome}", file=out)
+    return 0 if outcome == "ok" else 1
+
+
 def _is_terminal(stream):
     isatty = getattr(stream, "isatty", None)
     try:
@@ -104,8 +141,7 @@ def run_live(environ, stdin=None, out=None, err=None, http=None, today=None) -> 
         print(f"collect: refused: {config.SIGNAL_FILE} is not set; nothing requested", file=err)
         return EXIT_REFUSED_BEFORE_START
     if signal.source == HUGGINGFACE:
-        print(f"collect: refused: {HF_NOT_IMPLEMENTED}; nothing requested", file=err)
-        return EXIT_REFUSED_BEFORE_START
+        return _run_hf_live(signal, settings, environ, stdin, out, err, http, today)
     try:
         suppression = suppression_from_env(environ)
     except DraftError as e:
@@ -145,6 +181,60 @@ def run_live(environ, stdin=None, out=None, err=None, http=None, today=None) -> 
     result = collect(signal, client, suppression, settings.max_calls,
                      today if today is not None else utc_today())
     for line in summarize(result):
+        print(line, file=out)
+    for domain, items in result.evidence_by_domain.items():
+        for evidence in items:
+            print(f"evidence for {domain}:", file=out)
+            print(f"  summary: {evidence.summary}", file=out)
+            print(f"  url: {evidence.url}", file=out)
+    return EXIT_CODES[result.run_report.status]
+
+
+def _run_hf_live(signal, settings, environ, stdin, out, err, http, today) -> int:
+    """collect --live for a Hugging Face signal file: the GitHub gates, its own plan line and
+    budget, the client built only after "yes", then collect_hf. Anonymous: no token is sent."""
+    try:
+        suppression = suppression_from_env(environ)
+    except DraftError as e:
+        print(f"collect: refused: the suppression list is not usable ({e.code}); nothing "
+              "requested", file=err)
+        return EXIT_REFUSED_BEFORE_START
+    budget_cap = settings.hf_max_calls
+    try:
+        plan = build_plan(signal, suppression, budget_cap)
+    except PlanError as e:
+        print(f"collect: refused: {e}; nothing requested", file=err)
+        return EXIT_REFUSED_BEFORE_START
+    if not (_is_terminal(stdin) and _is_terminal(out)):
+        print("collect: refused: stdin and stdout must be a terminal (live collection needs a "
+              "typed confirmation); nothing requested", file=err)
+        return EXIT_REFUSED_BEFORE_START
+
+    print(f"signal: {plan.signal_name}", file=out)
+    print(f"targets: {len(signal.targets)} ({plan.targets_planned} planned, "
+          f"{len(plan.skipped)} skipped as suppressed)", file=out)
+    if plan.skipped:
+        print(f"skipped (suppressed): {', '.join(plan.skipped)}", file=out)
+    print(f"terms: {len(signal.terms)}", file=out)
+    print(f"source: huggingface; kinds: {', '.join(signal.kinds)}", file=out)
+    print(f"planned requests: at most {plan.total} (1 overview per target, at most "
+          f"{HF_PAGES_PER_LISTING} listing pages per kind); budget {budget_cap} "
+          f"({config.HF_MAX_CALLS}); rate ceiling {HF_RATE_CEILING_PER_WINDOW} per 300 seconds",
+          file=out)
+    print(f'Type "{CONFIRM_WORD}" to make these Hugging Face requests: ', end="", file=out)
+    out.flush()
+    try:
+        typed = stdin.readline()
+    except (OSError, ValueError, KeyboardInterrupt):
+        typed = ""
+    if typed.rstrip("\n") != CONFIRM_WORD:
+        print("collect: not confirmed; nothing requested", file=err)
+        return EXIT_NOT_CONFIRMED
+
+    hf_client = HuggingFaceClient(http, CallBudget(budget_cap), dry_run=False)
+    result = collect_hf(signal, hf_client, suppression,
+                        today if today is not None else utc_today(), budget_cap=budget_cap)
+    for line in summarize_hf(result, signal.kinds):
         print(line, file=out)
     for domain, items in result.evidence_by_domain.items():
         for evidence in items:

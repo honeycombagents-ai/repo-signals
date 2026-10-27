@@ -222,7 +222,7 @@ class Pagination(Case):
         bad = [link("abc", host="example.com"), link("abc", host="huggingface.co.example.com"),
                link("abc").replace("https://", "http://"), link("abc", path="/api/datasets"),
                link("abc", host="huggingface.co:8443"), link("abc", host="user:@huggingface.co"),
-               link("a%20b"), link("a<b"), link("x" * 600), link("abc", extra="&cursor=def"),
+               link("a%20b"), link("a<b"), link("x" * 1025), link("abc", extra="&cursor=def"),
                link("abc", extra="#frag"), 'garbage; rel="next"', "<not a url>; rel=next",
                "x" * 5000]
         for value in bad:

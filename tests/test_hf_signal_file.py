@@ -178,13 +178,15 @@ class Commands(run_fx.Case):
         self.assertIn("organisation overview: sentinel-org (for example.com)", text)
         self.assertNotIn("://", text)
 
-    def test_collect_live_refuses_before_any_request(self):
+    def test_collect_live_without_a_terminal_refuses_before_any_request(self):
         out, err = io.StringIO(), io.StringIO()
-        with mock.patch.object(live, "GitHubClient", side_effect=AssertionError("built")):
+        with mock.patch.object(live, "GitHubClient", side_effect=AssertionError("built")), \
+                mock.patch.object(live, "HuggingFaceClient", side_effect=AssertionError("built")):
             code = live.run_live(self.hf_env(), stdin=io.StringIO("yes\n"), out=out, err=err)
         self.assertEqual(code, 2)
         self.assertEqual(err.getvalue(),
-                         "collect: refused: huggingface_not_implemented; nothing requested\n")
+                         "collect: refused: stdin and stdout must be a terminal (live collection "
+                         "needs a typed confirmation); nothing requested\n")
         self.assertEqual(out.getvalue(), "")
 
     def test_run_live_refuses_before_any_request(self):

@@ -15,14 +15,18 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="command", required=True)
     d = sub.add_parser("doctor", help="check the configuration offline")
     d.add_argument("--online", action="store_true", help="online checks (not implemented yet)")
-    c = sub.add_parser("collect", help="collect GitHub signals (--dry-run or --live)")
+    c = sub.add_parser("collect", help="collect GitHub or Hugging Face signals (--dry-run or "
+                                       "--live)")
     mode = c.add_mutually_exclusive_group()
     mode.add_argument("--dry-run", action="store_true",
                       help="validate the signal file and print the plan; request nothing")
     mode.add_argument("--live", action="store_true",
-                      help="make the planned GitHub requests after a typed confirmation")
+                      help="make the planned requests after a typed confirmation")
     p = sub.add_parser("probe-org", help="one GitHub request: look up one organisation")
     p.add_argument("login", help="the organisation login")
+    h = sub.add_parser("hf-probe-org",
+                       help="one Hugging Face request: look up one organisation overview")
+    h.add_argument("org", help="the organisation name")
     r = sub.add_parser("run", help="collect, find people, draft and write to the sheet "
                                    "(dry run unless --live)")
     r.add_argument("--live", action="store_true",
@@ -44,6 +48,9 @@ def main(argv=None) -> int:
     if args.command == "probe-org":
         from .collector import live  # loaded only for the live path
         return live.run_probe(args.login, os.environ)
+    if args.command == "hf-probe-org":
+        from .collector import live  # loaded only for the live path
+        return live.run_hf_probe(args.org, os.environ)
     if args.command == "run":
         from . import run as run_command  # loaded only when used
         return run_command.run(live=args.live)

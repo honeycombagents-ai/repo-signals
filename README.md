@@ -41,11 +41,13 @@ Repo Signals is built so that someone who already uses Hunter or Apollo can depl
 
 Nothing makes a network call unless you turn dry run off. `run --live` and `collect --live` also
 need a terminal and a typed "yes". `probe-org` is the exception: it makes one real GitHub request
-with only dry run turned off, and it needs no terminal and no typed "yes". `run` without `--live`
-is the dry run and needs neither.
+with only dry run turned off, and it needs no terminal and no typed "yes". `hf-probe-org` does the
+same for Hugging Face: one real request, with only dry run turned off. `run` without `--live` is
+the dry run and needs neither.
 
-- **collect**: turns a signal file into GitHub evidence. `collect --dry-run` validates the file and
-  prints the plan with no network call. See [docs/signal-file.md](docs/signal-file.md) and
+- **collect**: turns a signal file into GitHub or Hugging Face evidence. `collect --dry-run`
+  validates the file and prints the plan with no network call. `run --live` supports GitHub
+  signal files only, for now. See [docs/signal-file.md](docs/signal-file.md) and
   [docs/live-collection.md](docs/live-collection.md).
 - **people**: looks up people through Hunter.io or Apollo.io behind a hard call budget. Both are
   dry runs by default, and live use is reachable only through the gated `run --live`. The built-in
@@ -116,7 +118,7 @@ Settings come from environment variables only:
 | `REPO_SIGNALS_SENDER_NAME`, `_SENDER_ROLE`, `_ORG_NAME`, `_POSTAL_ADDRESS`, `_OPTOUT_TEXT` | sender details put in every draft | unset (WARN; drafting refuses) |
 | `REPO_SIGNALS_SUPPRESSION_FILE` | path to a suppression list (one email or domain per line) | unset (WARN) |
 | `REPO_SIGNALS_SIGNAL_FILE` | path to the collector's signal file (TOML) | unset (WARN) |
-| `REPO_SIGNALS_DRY_RUN` | `true`, or exactly `false` to allow `probe-org`, `collect --live` and `run --live` | `true` |
+| `REPO_SIGNALS_DRY_RUN` | `true`, or exactly `false` to allow `probe-org`, `hf-probe-org`, `collect --live` and `run --live` | `true` |
 
 `doctor` names variables but never prints their values. `doctor --online` is accepted but not
 implemented yet.

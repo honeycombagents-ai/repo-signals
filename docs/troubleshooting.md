@@ -40,25 +40,26 @@ because the preflight reads only the first row.
 
 | code | what it means | what to check |
 |---|---|---|
-| `dry_run` | A live GitHub request was attempted while dry run is on. | Set `REPO_SIGNALS_DRY_RUN=false` in the shell where you run the live command, and only there. |
-| `budget_exhausted` | The call budget for this service ran out. The request was not sent. | Raise the cap for the stage the run names: `REPO_SIGNALS_MAX_CALLS` (GitHub), `REPO_SIGNALS_PROVIDER_MAX_CALLS` (people) or `REPO_SIGNALS_SHEETS_MAX_CALLS` (Google). Each is at most 500. |
-| `rate_limited` | The service said to slow down: GitHub answered 403 or 429, or reported 0 requests left; a provider or Google answered 429 with no usable `Retry-After`. The tool never waits or retries. | Wait and run again later. For GitHub, set `REPO_SIGNALS_GITHUB_TOKEN` for higher limits. `probe-org` shows the remaining count and reset time. <a id="rate_limited"></a> |
+| `dry_run` | A live GitHub or Hugging Face request was attempted while dry run is on. | Set `REPO_SIGNALS_DRY_RUN=false` in the shell where you run the live command, and only there. |
+| `budget_exhausted` | The call budget for this service ran out. The request was not sent. | Raise the cap for the stage the run names: `REPO_SIGNALS_MAX_CALLS` (GitHub), `REPO_SIGNALS_HF_MAX_CALLS` (Hugging Face), `REPO_SIGNALS_PROVIDER_MAX_CALLS` (people) or `REPO_SIGNALS_SHEETS_MAX_CALLS` (Google). Each is at most 500. |
+| `rate_limited` | The service said to slow down: GitHub answered 403 or 429, or reported 0 requests left; Hugging Face answered 429, or its `RateLimit` header showed 0 left; a provider or Google answered 429 with no usable `Retry-After`. The tool never waits or retries. | Wait and run again later. For GitHub, set `REPO_SIGNALS_GITHUB_TOKEN` for higher limits. `probe-org` shows the remaining count and reset time. <a id="rate_limited"></a> |
 | `retry_after_N` | A provider or Google answered 429 and asked you to wait N seconds (0 to 60). | Wait at least N seconds before running again. |
 | `token_rejected` | GitHub answered 401 for your token, or Google's token endpoint answered 400. | GitHub: the token is expired, revoked or mistyped; make a new one and set it with `read -rs`. Google: the key was deleted in the console, the key file is from another project, or your computer's clock is wrong. <a id="token_rejected"></a> |
 | `not_found` | GitHub answered 404, usually for an organisation login that does not exist. | The `org` spelling in the signal file. `repo-signals probe-org` checks one login with one request. <a id="not_found"></a> |
 | `org_not_visible` | GitHub refused to search inside that organisation (a 422 with the "cannot be searched" message). | The `org` name in the signal file, and whether your token can see that org. Check which account the token belongs to. <a id="org_not_visible"></a> |
-| `bad_query` | GitHub refused a search with a 422 for any other reason. | The term and `language` in the signal file. |
+| `bad_query` | GitHub refused a search with a 422 for any other reason, or Hugging Face refused a listing with a 400 or 422. | The term and `language` in the signal file. For Hugging Face, report it: the listing parameters are fixed. |
 | `server_error` | The service answered with a 5xx error. | Nothing on your side. Try again later. |
 | `unexpected_status` | The service answered with a status the tool does not expect. | Try again later. If it repeats, the API may have changed: see the unverified constants in the provider's doc. |
-| `org_not_found` | Hugging Face answered 404 for the organisation overview: no organisation by that name. (The Hugging Face client is built but not reachable from any command yet.) | The `org` value in the signal file: the `NAME` in huggingface.co/NAME. |
-| `unauthorised` | Hugging Face answered 401. Anonymously it answers this for an unknown or private repository, so the two cannot be told apart. The client stops for the rest of the run. (Not reachable from any command yet.) | The organisation and repository names. |
-| `bad_link` | A Hugging Face `Link` header for the next page pointed somewhere unexpected (another host or path, or a cursor that is not a short token of safe characters). It is never followed. (Not reachable from any command yet.) | Report it if it repeats: the API may have changed. |
-| `listing_capped` | A Hugging Face listing still had more pages after the page cap (2 pages of up to 500 items), so the result may be incomplete. (Not reachable from any command yet.) | Use fewer kinds or narrower terms, or check the organisation by hand. |
+| `org_not_found` | Hugging Face answered 404 for the organisation overview: no organisation by that name. In `collect --live` the target is unresolved and the run continues; `hf-probe-org` shows it as the outcome. | The `org` value in the signal file: the `NAME` in huggingface.co/NAME. `repo-signals hf-probe-org` checks one name with one request. |
+| `unauthorised` | Hugging Face answered 401. Anonymously it answers this for an unknown or private repository, so the two cannot be told apart. The client stops for the rest of the run, which ends as partial. | The organisation and repository names. |
+| `bad_link` | A Hugging Face `Link` header for the next page pointed somewhere unexpected (another host or path, or a cursor that is not a short token of safe characters). It is never followed, and that listing is reported as incomplete. | Report it if it repeats: the API may have changed. |
+| `listing_capped` | A Hugging Face listing still had more pages after the page cap (2 pages of up to 500 items), so the result may be incomplete. The records already read are kept and the run ends as partial. | Use fewer kinds or narrower terms, or check the organisation by hand. |
 | `bad_expand` | The Hugging Face client was asked to expand a field outside its allowlist for that kind (Spaces do not accept `gated`). | Report it as a bug. |
 | `bad_limit` | The Hugging Face client was given a page size that is not a positive whole number. | Report it as a bug. |
 | `bad_cursor` | The Hugging Face client was given a page cursor that is not a short token of safe characters. | Report it as a bug. |
 | `bad_max_pages` | The Hugging Face client was asked for more pages than the plan allows (at most 2). | Report it as a bug. |
-| `unexpected_shape` | A 2xx answer was JSON, but not in the shape the tool expects. | The API may have changed. Check the unverified-details checklist in [hunter.md](hunter.md), [apollo.md](apollo.md), [google-sheets.md](google-sheets.md) or [github-client.md](github-client.md). |
+| `unexpected_shape` | A 2xx answer was JSON, but not in the shape the tool expects. | The API may have changed. Check the unverified-details checklist in [hunter.md](hunter.md), [apollo.md](apollo.md), [google-sheets.md](google-sheets.md), [github-client.md](github-client.md) or [huggingface-design.md](huggingface-design.md). |
+| `client_error` | A client failed in a way that carried no code. Only this code is printed, never the error text. | Run again. If it repeats, report it as a bug. |
 | `malformed_json` | A 2xx answer was not JSON. | A proxy, VPN or captive portal answering in place of the service. |
 | `timeout` | The request took longer than the timeout. | Your network connection. Try again. |
 | `tls_error` | The secure connection failed. | A proxy or security tool intercepting HTTPS, or a wrong system clock. |
@@ -122,7 +123,7 @@ because the preflight reads only the first row.
 | `signal_target_N_confirm_org_without_org` | Target N has `confirm_org` but no `org`. | Add the `org`, or remove `confirm_org`. |
 | `signal_target_N_hf_needs_org` | Hugging Face target N has no `org`. A domain-only target cannot be matched, because Hugging Face organisation profiles have no website field. Nothing was requested. | Add the organisation name as `org`, with `confirm_org = true`. |
 | `signal_target_N_hf_needs_confirm_org` | Hugging Face target N has an `org` but not `confirm_org = true`. Your confirmation is the only link between a company and a Hugging Face organisation. | Set `confirm_org = true` only if you know the organisation belongs to the company. |
-| `huggingface_not_implemented` | The signal file has `source = "huggingface"`, but the Hugging Face collector is not built yet. `collect --dry-run` prints the plan; `collect --live` and `run --live` refuse with nothing requested. | Use a GitHub signal file for live runs for now. |
+| `huggingface_not_implemented` | The signal file has `source = "huggingface"`, and `run --live` does not support Hugging Face yet: it refuses with nothing requested. `collect --dry-run` and `collect --live` work. | Use `collect --live` for a Hugging Face file, or a GitHub signal file for `run --live`. |
 | `signal_duplicate_domain` | Two targets have the same domain, ignoring case. | Remove the duplicate. |
 | `signal_duplicate_org` | Two targets have the same org, ignoring case. | Remove the duplicate. |
 | `missing_key` | The provider's API key variable is unset or blank. | `HUNTER_API_KEY` or `APOLLO_API_KEY`, set in this shell with `read -rs`. |
@@ -249,7 +250,8 @@ For `repo-signals run` (see [run.md](run.md)):
 | 4 | refused by a stage, for example a sheet whose headers are not the tool's |
 
 `repo-signals collect --live` uses the same numbers (see [live-collection.md](live-collection.md)).
-`repo-signals probe-org` exits 0 for `ok`, 1 if the request failed and 2 if it refused.
+`repo-signals probe-org` and `repo-signals hf-probe-org` exit 0 for `ok`, 1 if the request
+failed and 2 if they refused.
 
 ## Common mistakes
 
